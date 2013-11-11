@@ -662,6 +662,8 @@ retry:
 					  r->name);
 			r->initialized = 1;
 			r->entropy_total = 0;
+			if (r == &nonblocking_pool)
+				prandom_reseed_late();
 		}
 	}
 
