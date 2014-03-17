@@ -68,6 +68,14 @@ static inline int arch_get_random_int(unsigned int *v)
 {
 	return 0;
 }
+static inline int arch_has_random(void)
+{
+	return 0;
+}
+static inline int arch_has_random_seed(void)
+{
+	return 0;
+}
 #endif
 
 /* Pseudo random number generator from numerical recipes. */
