@@ -80,6 +80,14 @@ static inline int arch_has_random(void)
 {
 	return 0;
 }
+static inline int arch_get_random_seed_long(unsigned long *v)
+{
+	return 0;
+}
+static inline int arch_get_random_seed_int(unsigned int *v)
+{
+	return 0;
+}
 static inline int arch_has_random_seed(void)
 {
 	return 0;
