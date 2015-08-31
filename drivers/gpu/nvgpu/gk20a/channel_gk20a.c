@@ -1412,6 +1412,14 @@ bool gk20a_channel_update_and_check_timeout(struct channel_gk20a *ch,
 		ch->timeout_accumulated_ms > ch->timeout_ms_max;
 }
 
+static u32 gk20a_get_channel_watchdog_timeout(struct channel_gk20a *ch)
+{
+	if (ch->g->timeouts_enabled && ch->g->ch_wdt_enabled)
+		return NVGPU_CHANNEL_WATCHDOG_DEFAULT_TIMEOUT_MS;
+	else
+		return (u32)MAX_SCHEDULE_TIMEOUT;
+}
+
 static u32 get_gp_free_count(struct channel_gk20a *c)
 {
 	update_gp_get(c->g, c);
@@ -1541,6 +1549,112 @@ void gk20a_channel_cancel_job_clean_up(struct channel_gk20a *c,
 	mutex_unlock(&c->clean_up.lock);
 }
 
+static void gk20a_channel_timeout_start(struct channel_gk20a *ch,
+		struct channel_gk20a_job *job)
+{
+	mutex_lock(&ch->timeout.lock);
+
+	if (ch->timeout.initialized) {
+		mutex_unlock(&ch->timeout.lock);
+		return;
+	}
+
+	ch->timeout.job = job;
+	ch->timeout.initialized = true;
+	schedule_delayed_work(&ch->timeout.wq,
+	       msecs_to_jiffies(gk20a_get_channel_watchdog_timeout(ch)));
+
+	mutex_unlock(&ch->timeout.lock);
+}
+
+static void gk20a_channel_timeout_stop(struct channel_gk20a *ch)
+{
+	mutex_lock(&ch->timeout.lock);
+
+	if (!ch->timeout.initialized) {
+		mutex_unlock(&ch->timeout.lock);
+		return;
+	}
+
+	ch->timeout.initialized = false;
+	cancel_delayed_work_sync(&ch->timeout.wq);
+
+	mutex_unlock(&ch->timeout.lock);
+}
+
+static void gk20a_channel_timeout_handler(struct work_struct *work)
+{
+	struct channel_gk20a_job *job;
+	struct gk20a *g;
+	struct channel_gk20a *ch;
+	struct channel_gk20a *failing_ch;
+	u32 engine_id;
+	int id = -1;
+	bool is_tsg = false;
+
+	ch = container_of(to_delayed_work(work), struct channel_gk20a,
+			timeout.wq);
+	ch = gk20a_channel_get(ch);
+	if (!ch)
+		return;
+
+	g = ch->g;
+
+	/* Need global lock since multiple channels can timeout at a time */
+	mutex_lock(&g->ch_wdt_lock);
+
+	/* Get timed out job and reset the timer */
+	mutex_lock(&ch->timeout.lock);
+	job = ch->timeout.job;
+	ch->timeout.initialized = false;
+	mutex_unlock(&ch->timeout.lock);
+
+	if (gk20a_fifo_disable_all_engine_activity(g, true))
+		goto fail_unlock;
+
+	if (gk20a_fence_is_expired(job->post_fence))
+		goto fail_enable_engine_activity;
+
+	gk20a_err(dev_from_gk20a(g), "Job on channel %d timed out\n",
+		ch->hw_chid);
+
+	/* Get failing engine data */
+	engine_id = gk20a_fifo_get_failing_engine_data(g, &id, &is_tsg);
+
+	if (engine_id >= g->fifo.max_engines) {
+		/* If no failing engine, abort the channels */
+		if (gk20a_is_channel_marked_as_tsg(ch)) {
+			struct tsg_gk20a *tsg = &g->fifo.tsg[ch->tsgid];
+
+			gk20a_fifo_set_ctx_mmu_error_tsg(g, tsg);
+			gk20a_fifo_abort_tsg(g, ch->tsgid);
+		} else {
+			gk20a_fifo_set_ctx_mmu_error_ch(g, ch);
+			gk20a_channel_abort(ch, true);
+		}
+	} else {
+		/* If failing engine, trigger recovery */
+		failing_ch = gk20a_channel_get(&g->fifo.channel[id]);
+		if (!failing_ch)
+			goto fail_enable_engine_activity;
+
+		if (failing_ch->hw_chid != ch->hw_chid)
+			gk20a_channel_timeout_start(ch, job);
+
+		gk20a_fifo_recover(g, BIT(engine_id),
+			failing_ch->hw_chid, is_tsg,
+			true, failing_ch->timeout_debug_dump);
+
+		gk20a_channel_put(failing_ch);
+	}
+
+fail_enable_engine_activity:
+	gk20a_fifo_enable_all_engine_activity(g);
+fail_unlock:
+	mutex_unlock(&g->ch_wdt_lock);
+	gk20a_channel_put(ch);
+}
+
 static int gk20a_channel_add_job(struct channel_gk20a *c,
 				 struct gk20a_fence *pre_fence,
 				 struct gk20a_fence *post_fence,
@@ -1576,6 +1690,8 @@ static int gk20a_channel_add_job(struct channel_gk20a *c,
 		job->post_fence = gk20a_fence_get(post_fence);
 		job->wait_cmd = wait_cmd;
 		job->incr_cmd = incr_cmd;
+
+		gk20a_channel_timeout_start(c, job);
 
 		spin_lock(&c->jobs_lock);
 		list_add_tail(&job->list, &c->jobs);
@@ -1624,8 +1740,12 @@ static void gk20a_channel_clean_up_jobs(struct work_struct *work)
 		spin_unlock(&c->jobs_lock);
 
 		completed = gk20a_fence_is_expired(job->post_fence);
-		if (!completed)
+		if (!completed) {
+			gk20a_channel_timeout_start(c, job);
 			break;
+		}
+
+		gk20a_channel_timeout_stop(c);
 
 		mutex_lock(&c->sync_lock);
 		if (c->sync) {
@@ -2027,6 +2147,8 @@ int gk20a_init_channel_support(struct gk20a *g, u32 chid)
 	INIT_DELAYED_WORK(&c->clean_up.wq, gk20a_channel_clean_up_jobs);
 	mutex_init(&c->clean_up.lock);
 	mutex_init(&c->sync_lock);
+	mutex_init(&c->timeout.lock);
+	INIT_DELAYED_WORK(&c->timeout.wq, gk20a_channel_timeout_handler);
 	INIT_LIST_HEAD(&c->jobs);
 #if defined(CONFIG_GK20A_CYCLE_STATS)
 	mutex_init(&c->cyclestate.cyclestate_buffer_mutex);

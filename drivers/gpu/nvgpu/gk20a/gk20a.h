@@ -476,6 +476,8 @@ struct gk20a {
 	u32 timeouts_enabled;
 
 	struct mutex poweroff_lock;
+	u32 ch_wdt_enabled;
+	struct mutex ch_wdt_lock;
 
 	bool slcg_enabled;
 	bool blcg_enabled;
