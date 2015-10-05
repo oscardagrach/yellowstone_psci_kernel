@@ -275,4 +275,5 @@ u32 channel_gk20a_pbdma_acquire_val(struct channel_gk20a *c);
 int channel_gk20a_setup_ramfc(struct channel_gk20a *c,
 			u64 gpfifo_base, u32 gpfifo_entries, u32 flags);
 void channel_gk20a_enable(struct channel_gk20a *ch);
+void gk20a_channel_timeout_stop_all_channels(struct gk20a *g);
 #endif /* CHANNEL_GK20A_H */
