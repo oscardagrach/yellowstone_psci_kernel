@@ -1,5 +1,5 @@
 /*
- * drivers/misc/tegra-profiler/hrt.h
+ * drivers/misc/tegra-profiler/version.h
  *
  * Copyright (c) 2013-2016, NVIDIA CORPORATION.  All rights reserved.
  *
@@ -18,7 +18,7 @@
 #ifndef __QUADD_VERSION_H
 #define __QUADD_VERSION_H
 
-#define QUADD_MODULE_VERSION		"1.107"
+#define QUADD_MODULE_VERSION		"1.106"
 #define QUADD_MODULE_BRANCH		"Dev"
 
 #endif	/* __QUADD_VERSION_H */
