@@ -693,8 +693,9 @@ int nvadsp_os_load(void)
 	}
 	priv.os_firmware = fw;
 	priv.adsp_os_fw_loaded = true;
+#ifdef CONFIG_DEBUG_FS
 	wake_up(&priv.logger.wait_queue);
-
+#endif
 	mutex_unlock(&priv.fw_load_lock);
 	return 0;
 
@@ -1068,7 +1069,9 @@ int nvadsp_os_start(void)
 	}
 	priv.os_running = drv_data->adsp_os_running = true;
 	drv_data->adsp_os_suspended = false;
+#ifdef CONFIG_DEBUG_FS
 	wake_up(&priv.logger.wait_queue);
+#endif
 unlock:
 	mutex_unlock(&priv.os_run_lock);
 end:
@@ -1169,17 +1172,18 @@ static void __nvadsp_os_stop(bool reload)
 	if (reload) {
 		struct nvadsp_debug_log *logger = &priv.logger;
 
+#ifdef CONFIG_DEBUG_FS
 		wake_up(&logger->wait_queue);
 		/* wait for LOGGER_TIMEOUT to complete filling the buffer */
 		wait_for_completion_interruptible_timeout(&logger->complete,
 			msecs_to_jiffies(LOGGER_COMPLETE_TIMEOUT));
+#endif
 		/*
 		 * move ram iterator to 0, since after restart the iterator
 		 * will be pointing to initial position of start.
 		 */
 		logger->debug_ram_rdr[0] = EOT;
 		logger->ram_iter = 0;
-
 		/* load a fresh copy of adsp.elf */
 		if (nvadsp_os_elf_load(fw))
 			dev_err(dev, "failed to reload %s\n", NVADSP_FIRMWARE);
