@@ -107,6 +107,9 @@ int aarch64_insn_patch_text_nosync(void *addr, u32 insn);
 int aarch64_insn_patch_text_sync(void *addrs[], u32 insns[], int cnt);
 int aarch64_insn_patch_text(void *addrs[], u32 insns[], int cnt);
 
+typedef bool (pstate_check_t)(unsigned long);
+extern pstate_check_t * const aarch32_opcode_cond_checks[16];
+
 #endif /* __ASSEMBLY__ */
 
 #endif	/* __ASM_INSN_H */
