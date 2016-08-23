@@ -3,7 +3,7 @@
  *
  * Generic ADC thermal driver
  *
- * Copyright (c) 2013-2014, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2013-2016, NVIDIA Corporation. All rights reserved.
  *
  * Author: Jinyoung Park <jinyoungp@nvidia.com>
  *
@@ -483,8 +483,9 @@ static int gadc_thermal_probe(struct platform_device *pdev)
 		ret = PTR_ERR(drvdata->tz);
 		goto error_release_channel;
 	}
-
+#ifdef CONFIG_DEBUG_FS
 	gadc_thermal_debugfs_init(drvdata);
+#endif
 
 	return 0;
 
