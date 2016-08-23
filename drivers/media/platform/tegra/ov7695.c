@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2017, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -350,17 +350,6 @@ static inline int ov7695_read_reg(struct ov7695_info *info, u16 addr, u8 *val)
 	return regmap_read(info->regmap, addr, (unsigned int *) val);
 }
 
-static int ov7695_write_reg16(struct ov7695_info *info, u16 addr, u16 val)
-{
-	unsigned char data[2];
-
-	data[0] = (u8) (val >> 8);
-	data[1] = (u8) (val & 0xff);
-
-	dev_dbg(&info->i2c_client->dev, "0x%x = 0x%x\n", addr, val);
-	return regmap_raw_write(info->regmap, addr, data, sizeof(data));
-}
-
 static void ov7695_mclk_disable(struct ov7695_info *info)
 {
 	dev_dbg(&info->i2c_client->dev, "%s: disable MCLK\n", __func__);
@@ -580,6 +569,17 @@ static struct miscdevice ov7695_device = {
 };
 
 #ifdef CONFIG_DEBUG_FS
+static int ov7695_write_reg16(struct ov7695_info *info, u16 addr, u16 val)
+{
+	unsigned char data[2];
+
+	data[0] = (u8) (val >> 8);
+	data[1] = (u8) (val & 0xff);
+
+	dev_dbg(&info->i2c_client->dev, "0x%x = 0x%x\n", addr, val);
+	return regmap_raw_write(info->regmap, addr, data, sizeof(data));
+}
+
 static int ov7695_stats_show(struct seq_file *s, void *data)
 {
 	static struct ov7695_info *info;
