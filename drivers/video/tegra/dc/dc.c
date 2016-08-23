@@ -610,6 +610,7 @@ void tegra_dc_release_dc_out(struct tegra_dc *dc)
 	print(data, buff);				      \
 	} while (0)
 
+#if defined(DEBUG) || defined(CONFIG_DEBUG_FS)
 static void _dump_regs(struct tegra_dc *dc, void *data,
 		       void (* print)(void *data, const char *str))
 {
@@ -845,6 +846,7 @@ static void _dump_regs(struct tegra_dc *dc, void *data,
 	tegra_dc_put(dc);
 	mutex_unlock(&dc->lock);
 }
+#endif /* DEBUG || CONFIG_DEBUG_FS */
 
 #undef DUMP_REG
 
