@@ -400,6 +400,7 @@ static void actmon_dev_enable(struct actmon_dev *dev)
 	spin_unlock_irqrestore(&dev->lock, flags);
 }
 
+#ifdef CONFIG_DEBUG_FS
 static void actmon_dev_disable(struct actmon_dev *dev)
 {
 	u32 val;
@@ -418,6 +419,7 @@ static void actmon_dev_disable(struct actmon_dev *dev)
 	}
 	spin_unlock_irqrestore(&dev->lock, flags);
 }
+#endif
 
 static void actmon_dev_save(struct actmon_dev *dev)
 {
