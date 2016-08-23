@@ -3744,4 +3744,9 @@ err_out:
 	debugfs_remove_recursive(dfll_clk->dent);
 	return -ENOMEM;
 }
-#endif
+#else
+int __init tegra_cl_dvfs_debug_init(struct clk *dfll_clk)
+{
+	return 0;
+}
+#endif /* CONFIG_DEBUG_FS */
