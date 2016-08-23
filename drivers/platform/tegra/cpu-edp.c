@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, NVIDIA CORPORATION. All Rights Reserved.
+ * Copyright (c) 2014-2016, NVIDIA CORPORATION. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -238,7 +238,7 @@ static int __init tegra_edp_debugfs_init(struct dentry *edp_dir)
 	return 0;
 }
 #else
-static int __init tegra_edp_debugfs_init(void)
+static int __init tegra_edp_debugfs_init(struct dentry *edp_dir)
 { return 0; }
 #endif /* CONFIG_DEBUG_FS */
 
