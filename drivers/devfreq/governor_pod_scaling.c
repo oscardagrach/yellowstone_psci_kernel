@@ -40,6 +40,7 @@
 #include <linux/slab.h>
 #include <linux/clk/tegra.h>
 #include <linux/tegra-soc.h>
+#include <linux/hrtimer.h>
 
 #include <linux/notifier.h>
 #include <linux/tegra-throughput.h>
