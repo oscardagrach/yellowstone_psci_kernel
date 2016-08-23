@@ -751,8 +751,6 @@ static void sdhci_tegra_set_tap_delay(struct sdhci_host *sdhci,
 	unsigned int tap_delay);
 static int tegra_sdhci_configure_regulators(struct sdhci_tegra *tegra_host,
 	u8 option, int min_uV, int max_uV);
-static void sdhci_tegra_set_trim_delay(struct sdhci_host *sdhci,
-	unsigned int trim_delay);
 static void tegra_sdhci_do_calibration(struct sdhci_host *sdhci,
 	unsigned char signal_voltage);
 static void tegra_sdhci_post_init(struct sdhci_host *sdhci);
@@ -2478,6 +2476,7 @@ static void sdhci_tegra_set_tap_delay(struct sdhci_host *sdhci,
 	}
 }
 
+#ifdef CONFIG_DEBUG_FS
 static void sdhci_tegra_set_trim_delay(struct sdhci_host *sdhci,
 	unsigned int trim_delay)
 {
@@ -2489,6 +2488,7 @@ static void sdhci_tegra_set_trim_delay(struct sdhci_host *sdhci,
 	vendor_ctrl |= (trim_delay << SDHCI_VNDR_CLK_CTRL_TRIM_VALUE_SHIFT);
 	sdhci_writel(sdhci, vendor_ctrl, SDHCI_VNDR_CLK_CTRL);
 }
+#endif
 
 static int sdhci_tegra_sd_error_stats(struct sdhci_host *host, u32 int_status)
 {
@@ -4292,6 +4292,7 @@ static void tegra_sdhci_power_off(struct sdhci_host *sdhci, u8 power_mode)
 	}
 }
 
+#ifdef CONFIG_DEBUG_FS
 static int show_polling_period(void *data, u64 *value)
 {
 	struct sdhci_host *host = (struct sdhci_host *)data;
@@ -4866,6 +4867,7 @@ err_root:
 		mmc_hostname(host->mmc), saved_line);
 	return;
 }
+#endif
 
 static ssize_t sdhci_handle_boost_mode_tap(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t count)
@@ -6160,8 +6162,10 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 			goto err_cd_irq_req;
 		}
 	}
+#ifdef CONFIG_DEBUG_FS
 	sdhci_tegra_error_stats_debugfs(host);
 	sdhci_tegra_misc_debugfs(host);
+#endif
 	device_create_file(&pdev->dev, &dev_attr_cmd_state);
 
 	if (plat->power_off_rail) {
