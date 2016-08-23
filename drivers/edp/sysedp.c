@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2016, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -366,7 +366,9 @@ static int sysedp_probe(struct platform_device *pdev)
 	margin = pdata->margin;
 	min_budget = (pdata->min_budget >= 0) ? pdata->min_budget : 0;
 	sysedp_init_sysfs();
+#ifdef CONFIG_DEBUG_FS
 	sysedp_init_debugfs();
+#endif
 	return 0;
 }
 
