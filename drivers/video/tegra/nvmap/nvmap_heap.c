@@ -3,7 +3,7 @@
  *
  * GPU heap allocator.
  *
- * Copyright (c) 2011-2015, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2011-2016, NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -88,6 +88,7 @@ int nvmap_query_heap_peer(struct nvmap_heap *heap)
 	return heap->peer;
 }
 
+#ifdef CONFIG_DEBUG_FS
 void nvmap_heap_debugfs_init(struct dentry *heap_root, struct nvmap_heap *heap)
 {
 	if (sizeof(heap->base) == sizeof(u64))
@@ -103,6 +104,11 @@ void nvmap_heap_debugfs_init(struct dentry *heap_root, struct nvmap_heap *heap)
 		debugfs_create_x32("size", S_IRUGO,
 			heap_root, (u32 *)&heap->len);
 }
+#else
+void nvmap_heap_debugfs_init(struct dentry *heap_root, struct nvmap_heap *heap)
+{
+}
+#endif /* CONFIG_DEBUG_FS*/
 
 static phys_addr_t nvmap_alloc_mem(struct nvmap_heap *h, size_t len,
 				   phys_addr_t *start)
