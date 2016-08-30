@@ -618,40 +618,6 @@ static long temp_convert(int cap, int a, int b)
 	return cap;
 }
 
-/**
- * temp_translate_reverse() - Translates the given temperature from two's
- * complement to the signed magnitude form used in SOC_THERM registers
- * @temp:	The temperature to be translated
- *
- * The register value returned will have the following bit assignment:
- * 15:7 magnitude of temperature in (1/2 or 1 degree precision) centigrade
- * 0 the sign bit of the temperature
- *
- * This function is the inverse of the temp_translate() function
- *
- * Return: The register value.
- */
-static u32 temp_translate_reverse(long temp)
-{
-	int sign;
-	int low_bit;
-
-	u32 lsb = 0;
-	u32 abs = 0;
-	u32 reg = 0;
-
-	sign = (temp > 0 ? 1 : -1);
-	low_bit = (sign > 0 ? 0 : 1);
-	temp *= sign;
-
-	lsb = ((temp % 1000) > 0) ? 1 : 0;
-	abs = (temp - 500 * lsb) / 1000;
-	abs &= 0xff;
-	reg = ((abs << 8) | (lsb << 7) | low_bit);
-
-	return reg;
-}
-
 static u32 fuse_calib_base_cp;
 static u32 fuse_calib_base_ft;
 static s32 actual_temp_cp;
@@ -3521,6 +3487,41 @@ static int tegra_soctherm_cpu_tsens_invalidate(bool control)
 }
 
 #ifdef CONFIG_DEBUG_FS
+
+/**
+ * temp_translate_reverse() - Translates the given temperature from two's
+ * complement to the signed magnitude form used in SOC_THERM registers
+ * @temp:	The temperature to be translated
+ *
+ * The register value returned will have the following bit assignment:
+ * 15:7 magnitude of temperature in (1/2 or 1 degree precision) centigrade
+ * 0 the sign bit of the temperature
+ *
+ * This function is the inverse of the temp_translate() function
+ *
+ * Return: The register value.
+ */
+static u32 temp_translate_reverse(long temp)
+{
+	int sign;
+	int low_bit;
+
+	u32 lsb = 0;
+	u32 abs = 0;
+	u32 reg = 0;
+
+	sign = (temp > 0 ? 1 : -1);
+	low_bit = (sign > 0 ? 0 : 1);
+	temp *= sign;
+
+	lsb = ((temp % 1000) > 0) ? 1 : 0;
+	abs = (temp - 500 * lsb) / 1000;
+	abs &= 0xff;
+	reg = ((abs << 8) | (lsb << 7) | low_bit);
+
+	return reg;
+}
+
 
 static int mn2pct(int m, int n)
 {
