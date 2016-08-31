@@ -3,7 +3,7 @@
  *
  * A device driver for ADSP and APE
  *
- * Copyright (C) 2014-2015 NVIDIA Corporation. All rights reserved.
+ * Copyright (C) 2014-2016 NVIDIA Corporation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -485,7 +485,7 @@ static int __init nvadsp_probe(struct platform_device *pdev)
 	if (ret)
 		goto out;
 
-#if CONFIG_DEBUG_FS
+#ifdef CONFIG_DEBUG_FS
 	if (adsp_debug_init(drv_data))
 		dev_err(dev,
 			"unable to create tegra_ape debug fs directory\n");
