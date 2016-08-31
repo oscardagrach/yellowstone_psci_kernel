@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2013-2017, NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -110,7 +110,6 @@ enum creg_command {
 	CREG_READ,
 	CREG_WRITE
 };
-#endif
 
 static const char * const pmic_names[] = {
 	[UNDEFINED] = "none",
@@ -121,6 +120,7 @@ static const char * const pmic_names[] = {
 };
 
 static DEFINE_SPINLOCK(nvg_lock);
+#endif
 
 bool denver_get_bg_allowed(int cpu)
 {
@@ -148,6 +148,14 @@ void denver_set_bg_allowed(int cpu, bool enable)
 	if (!enable)
 		while (denver_get_bg_allowed(cpu));
 }
+
+static bool backdoor_enabled;
+
+bool denver_backdoor_enabled(void)
+{
+	return backdoor_enabled;
+}
+EXPORT_SYMBOL(denver_backdoor_enabled);
 
 #ifdef CONFIG_DEBUG_FS
 
@@ -477,13 +485,6 @@ done:
 	return err;
 }
 arch_initcall(denver_pmic_init);
-
-static bool backdoor_enabled;
-
-bool denver_backdoor_enabled(void)
-{
-	return backdoor_enabled;
-}
 
 /*
  * Handle the invalid instruction exception caused by Denver
