@@ -7,7 +7,7 @@
  *	Colin Cross <ccross@google.com>
  *	Based on arch/arm/plat-omap/cpu-omap.c, (C) 2005 Nokia Corporation
  *
- * Copyright (C) 2010-2015 NVIDIA CORPORATION. All rights reserved.
+ * Copyright (C) 2010-2017 NVIDIA CORPORATION. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -66,8 +66,8 @@ static struct pm_qos_request cpufreq_min_req;
 static unsigned int cur_cpupwr;
 static unsigned int cur_cpupwr_freqcap;
 
-static unsigned int force_cpupwr;
-static unsigned int force_cpupwr_freqcap;
+static unsigned int __maybe_unused force_cpupwr;
+static unsigned int __maybe_unused force_cpupwr_freqcap;
 
 static bool force_policy_max;
 static bool initialized;
