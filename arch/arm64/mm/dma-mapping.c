@@ -1127,13 +1127,13 @@ static const struct file_operations dump_iommu_mappings_fops = {
 	.release        = single_release,
 };
 
-#endif /* CONFIG_DEBUG_FS */
 
 void dma_debugfs_platform_info(struct dentry *dent)
 {
 	debugfs_create_file("dump_mappings", S_IRUGO, dent, NULL,
 			    &dump_iommu_mappings_fops);
 }
+#endif /* CONFIG_DEBUG_FS */
 
 #else /* !CONFIG_ARM_DMA_USE_IOMMU */
 static inline void dma_debugfs_platform_info(struct dentry *dent)
@@ -2192,10 +2192,11 @@ static void arm_coherent_iommu_unmap_page(struct device *dev, dma_addr_t handle,
 	if (!iova)
 		return;
 
+#ifdef CONFIG_FTRACE
 	if (static_key_false(&__tracepoint_dmadebug_unmap_page.key))
 		trace_dmadebug_unmap_page(dev, handle, size,
 		    phys_to_page(iommu_iova_to_phys(mapping->domain, handle)));
-
+#endif
 	pg_iommu_unmap(mapping, iova, len, (ulong)attrs);
 	if (!dma_get_attr(DMA_ATTR_SKIP_FREE_IOVA, attrs))
 		__free_iova(mapping, iova, len, attrs);
