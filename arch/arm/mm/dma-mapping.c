@@ -2,6 +2,7 @@
  *  linux/arch/arm/mm/dma-mapping.c
  *
  *  Copyright (C) 2000-2004 Russell King
+ *  Copyright (C) 2017, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -1077,13 +1078,16 @@ static const struct file_operations dump_iommu_mappings_fops = {
 	.release        = single_release,
 };
 
-#endif /* CONFIG_DEBUG_FS */
-
 void dma_debugfs_platform_info(struct dentry *dent)
 {
 	debugfs_create_file("dump_mappings", S_IRUGO, dent, NULL,
 			    &dump_iommu_mappings_fops);
 }
+#else
+void dma_debugfs_platform_info(struct dentry *dent)
+{
+}
+#endif /* CONFIG_DEBUG_FS */
 
 #else /* !CONFIG_ARM_DMA_USE_IOMMU */
 static inline void dma_debugfs_platform_info(struct dentry *dent)
