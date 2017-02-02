@@ -72,6 +72,7 @@ struct tegra_nvhdcp {
 	u8				repeater;
 	struct workqueue_struct		*fallback_wq;
 	struct delayed_work		fallback_work;
+	struct work_struct		plug_work;
 };
 
 #ifdef CONFIG_TEGRA_HDMIHDCP
