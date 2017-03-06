@@ -178,7 +178,7 @@ write_sample(struct quadd_ring_buffer *rb,
 		rb_hdr->max_fill_count = fill_count;
 	}
 
-	rb_hdr->pos_write = new_hdr.pos_write;
+	smp_store_release(&rb_hdr->pos_write, new_hdr.pos_write);
 
 	return length_sample;
 }
