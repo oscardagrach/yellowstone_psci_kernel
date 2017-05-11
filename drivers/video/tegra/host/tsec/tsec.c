@@ -1,7 +1,7 @@
 /*
  * Tegra TSEC Module Support
  *
- * Copyright (c) 2012-2015, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2017, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -30,6 +30,10 @@
 #include <linux/of_platform.h>
 #include <linux/dma-mapping.h>
 #include <linux/tegra_pm_domains.h>
+
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+#include <linux/platform/tegra/tegra_mc.h>
+#endif
 
 #include <mach/hardware.h>
 
@@ -522,6 +526,10 @@ int nvhost_tsec_finalize_poweron(struct platform_device *dev)
 	u32 offset;
 	int err = 0;
 	struct flcn *m;
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+	u32 gsc_base_addr;
+	struct mc_carveout_info inf;
+#endif
 
 	err = nvhost_tsec_init_sw(dev);
 	if (err)
@@ -553,6 +561,15 @@ int nvhost_tsec_finalize_poweron(struct platform_device *dev)
 	/* boot tsec */
 	host1x_writel(dev, flcn_bootvec_r(),
 			     flcn_bootvec_vec_f(TSEC_OS_START_OFFSET));
+
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+	/* Populate DEBUGINFO with gsc carveout address */
+	mc_get_carveout_info(&inf, NULL, MC_SECURITY_CARVEOUT4);
+	gsc_base_addr =  inf.base >> 8;
+	host1x_writel(dev, flcn_debuginfo_r(), gsc_base_addr);
+#endif
+
+	/* Run TSEC */
 	host1x_writel(dev, flcn_cpuctl_r(),
 			flcn_cpuctl_startcpu_true_f());
 
