@@ -1140,8 +1140,9 @@ static int tsec_hdcp_authentication(struct tegra_nvhdcp *nvhdcp,
 	}
 #endif
 	err =  tsec_hdcp_revocation_check(hdcp_context,
-	(pkt + HDCP_CMAC_OFFSET),
-	(unsigned int *)(pkt + HDCP_TSEC_ADDR_OFFSET));
+		(pkt + HDCP_CMAC_OFFSET),
+		(unsigned int *)(pkt + HDCP_TSEC_ADDR_OFFSET),
+		TEGRA_NVHDCP_PORT_HDMI);
 	if (err)
 		goto exit;
 	err = nvhdcp_poll_ready(nvhdcp, 1000);
@@ -1247,7 +1248,9 @@ static int tsec_hdcp_authentication(struct tegra_nvhdcp *nvhdcp,
 		}
 #endif
 		err =  tsec_hdcp_verify_vprime(hdcp_context,
-				(pkt + HDCP_CMAC_OFFSET), (unsigned int *)(pkt + HDCP_TSEC_ADDR_OFFSET));
+			(pkt + HDCP_CMAC_OFFSET),
+			(unsigned int *)(pkt + HDCP_TSEC_ADDR_OFFSET),
+			TEGRA_NVHDCP_PORT_HDMI);
 		if (err)
 			goto exit;
 		hdcp_context->msg.rptr_send_ack_msg_id = ID_SEND_RPTR_ACK;
@@ -1647,7 +1650,9 @@ static int link_integrity_check(struct tegra_nvhdcp *nvhdcp,
 		}
 #endif
 		err =  tsec_hdcp_verify_vprime(hdcp_context,
-				(pkt + HDCP_CMAC_OFFSET), (unsigned int *)(pkt + HDCP_TSEC_ADDR_OFFSET));
+			(pkt + HDCP_CMAC_OFFSET),
+			(unsigned int *)(pkt + HDCP_TSEC_ADDR_OFFSET),
+			TEGRA_NVHDCP_PORT_HDMI);
 		if (err)
 			goto exit;
 		hdcp_context->msg.rptr_send_ack_msg_id = ID_SEND_RPTR_ACK;

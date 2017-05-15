@@ -1,7 +1,7 @@
 /*
  * drivers/video/tegra/dc/nvhdcp_hdcp22_methods.c
  *
- * Copyright (c) 2014-2016, NVIDIA CORPORATION, All rights reserved.
+ * Copyright (c) 2014-2017, NVIDIA CORPORATION, All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -395,7 +395,8 @@ exit:
 }
 
 int tsec_hdcp_revocation_check(struct hdcp_context_t *hdcp_context,
-		unsigned char *cmac, unsigned int *tsec_address)
+		unsigned char *cmac, unsigned int *tsec_address,
+		unsigned int port)
 {
 	int err = 0;
 	struct file *fp = NULL;
@@ -412,6 +413,7 @@ int tsec_hdcp_revocation_check(struct hdcp_context_t *hdcp_context,
 	revocation_check_param.trans_id.session_id = hdcp_context->session_id;
 	revocation_check_param.is_ver_hdcp2x = 1;
 	revocation_check_param.tsec_gsc_address = *tsec_address;
+	revocation_check_param.port = port;
 	fp = filp_open(HDCP22_SRM_PATH, O_RDONLY, 0);
 	if (IS_ERR(fp) || !fp) {
 		hdcp_err("Opening SRM file failed!\n");
@@ -469,7 +471,8 @@ int tsec_dp_hdcp_revocation_check(struct hdcp_context_t *hdcp_context)
 }
 
 int tsec_hdcp_verify_vprime(struct hdcp_context_t *hdcp_context,
-		unsigned char *cmac, unsigned int *tsec_address)
+		unsigned char *cmac, unsigned int *tsec_address,
+		unsigned int port)
 {
 	int err = 0;
 	u16 rxinfo;
@@ -506,6 +509,7 @@ int tsec_hdcp_verify_vprime(struct hdcp_context_t *hdcp_context,
 	verify_vprime_param.has_hdcp1_device = (rxinfo & 0x0001);
 	verify_vprime_param.bstatus = 0;
 	verify_vprime_param.is_ver_hdcp2x = 1;
+	verify_vprime_param.port = port;
 
 	if (!g_seq_num_init) {
 		if (memcmp(hdcp_context->msg.seq_num,

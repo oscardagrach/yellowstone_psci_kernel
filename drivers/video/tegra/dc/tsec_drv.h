@@ -1,7 +1,7 @@
 /*
  * drivers/video/tegra/dc/tsec_drv.h
  *
- * Copyright (c) 2014-2016, NVIDIA CORPORATION, All rights reserved.
+ * Copyright (c) 2014-2017, NVIDIA CORPORATION, All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -349,6 +349,7 @@ struct hdcp_revocation_check_param {
 	unsigned int tsec_gsc_address;              /* <<in */
 	unsigned char nonce[16];                    /* <<in */
 	unsigned char srm_cmac[16];                 /* <<in */
+	unsigned int port;                          /* <<in */
 };
 #define HDCP_REVOCATION_CHECK_ERROR_NONE                 HDCP_ERROR_NONE
 #define HDCP_REVOCATION_CHECK_ERROR_INVALID_SESSION\
@@ -610,6 +611,7 @@ struct hdcp_verify_vprime_param {
 	unsigned int    tsec_gsc_address;                           /* <<in */
 	unsigned char   srm_cmac[16];                               /* >>out */
 	unsigned char   nonce[16];                                  /* <<in */
+	unsigned int    port;                                       /* <<in */
 };
 #define HDCP_VERIFY_VPRIME_ERROR_NONE                    HDCP_ERROR_NONE
 #define HDCP_VERIFY_VPRIME_ERROR_INVALID_SESSION\
