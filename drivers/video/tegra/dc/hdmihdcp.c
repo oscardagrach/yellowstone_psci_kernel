@@ -85,7 +85,7 @@ static DEFINE_RATELIMIT_STATE(ratelimit, 60*HZ, 5);
 
 #define HDCP_SERVICE_UUID		{0x13F616F9, 0x4A6F8572,\
 				 0xAA04F1A1, 0xFFF9059B}
-#define HDCP_PKT_SIZE		        32
+#define HDCP_PKT_SIZE		        256
 #define HDCP_SESSION_SUCCESS		0
 #define HDCP_SESSION_FAILURE		1
 #define HDCP_CMAC_OFFSET		6
@@ -1048,7 +1048,7 @@ static int tsec_hdcp_authentication(struct tegra_nvhdcp *nvhdcp,
 	u8 version = 2;
 	u16 caps = 0;
 	u16 txcaps = 0x0;
-	uint8_t *pkt = NULL;
+	uint64_t *pkt = NULL;
 #if defined(CONFIG_TRUSTED_LITTLE_KERNEL)
 	unsigned char nonce[HDCP_NONCE_SIZE];
 	uint32_t hdcp_uuid[4] = HDCP_SERVICE_UUID;
@@ -1140,7 +1140,7 @@ static int tsec_hdcp_authentication(struct tegra_nvhdcp *nvhdcp,
 	}
 #endif
 	err =  tsec_hdcp_revocation_check(hdcp_context,
-		(pkt + HDCP_CMAC_OFFSET),
+		(unsigned char *)(pkt + HDCP_CMAC_OFFSET),
 		(unsigned int *)(pkt + HDCP_TSEC_ADDR_OFFSET),
 		TEGRA_NVHDCP_PORT_HDMI);
 	if (err)
@@ -1248,7 +1248,7 @@ static int tsec_hdcp_authentication(struct tegra_nvhdcp *nvhdcp,
 		}
 #endif
 		err =  tsec_hdcp_verify_vprime(hdcp_context,
-			(pkt + HDCP_CMAC_OFFSET),
+			(unsigned char *)(pkt + HDCP_CMAC_OFFSET),
 			(unsigned int *)(pkt + HDCP_TSEC_ADDR_OFFSET),
 			TEGRA_NVHDCP_PORT_HDMI);
 		if (err)
@@ -1589,7 +1589,7 @@ static int link_integrity_check(struct tegra_nvhdcp *nvhdcp,
 {
 	u16 rx_status = 0;
 	int err = 0;
-	uint8_t *pkt = NULL;
+	uint64_t *pkt = NULL;
 #if defined(CONFIG_TRUSTED_LITTLE_KERNEL)
 	char nonce[HDCP_NONCE_SIZE];
 	uint32_t hdcp_uuid[4] = HDCP_SERVICE_UUID;
@@ -1650,7 +1650,7 @@ static int link_integrity_check(struct tegra_nvhdcp *nvhdcp,
 		}
 #endif
 		err =  tsec_hdcp_verify_vprime(hdcp_context,
-			(pkt + HDCP_CMAC_OFFSET),
+			(unsigned char *)(pkt + HDCP_CMAC_OFFSET),
 			(unsigned int *)(pkt + HDCP_TSEC_ADDR_OFFSET),
 			TEGRA_NVHDCP_PORT_HDMI);
 		if (err)
