@@ -90,7 +90,7 @@ static DEFINE_RATELIMIT_STATE(ratelimit, 60*HZ, 5);
 #define HDCP_SESSION_FAILURE		1
 #define HDCP_CMAC_OFFSET		6
 #define HDCP_TSEC_ADDR_OFFSET		22
-#define HDCP_CMD_GEN_CMAC		0xA
+#define HDCP_CMD_GEN_CMAC		0xB
 
 #ifdef VERBOSE_DEBUG
 #define nvhdcp_vdbg(...)	\
