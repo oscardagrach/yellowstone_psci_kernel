@@ -5,7 +5,7 @@
  * Author:
  *	Colin Cross <ccross@google.com>
  *
- * Copyright (C) 2010-2015 NVIDIA CORPORATION. All rights reserved.
+ * Copyright (C) 2010-2017 NVIDIA CORPORATION. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -1463,7 +1463,8 @@ int tegra_dvfs_clip_freqs(struct clk *c, u32 *freqs, int *num_freqs, bool up)
 }
 EXPORT_SYMBOL(tegra_dvfs_clip_freqs);
 
-static int dvfs_rail_get_override_floor(struct dvfs_rail *rail)
+static int __attribute__((unused)) dvfs_rail_get_override_floor(
+		struct dvfs_rail *rail)
 {
 	return rail->override_unresolved ? rail->nominal_millivolts :
 		rail->min_override_millivolts;
