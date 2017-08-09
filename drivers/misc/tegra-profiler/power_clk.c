@@ -1,7 +1,7 @@
 /*
  * drivers/misc/tegra-profiler/power_clk.c
  *
- * Copyright (c) 2013-2015, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2017, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -125,9 +125,9 @@ static void make_sample(void)
 
 	mutex_unlock(&s->lock);
 /*
-	pr_debug("make_sample: cpu: %u/%u/%u/%u, gpu: %u, emc: %u\n",
-		 extra_cpus[0], extra_cpus[1], extra_cpus[2], extra_cpus[3],
-		 power_rate->gpu, power_rate->emc);
+ *	pr_debug("make_sample: cpu: %u/%u/%u/%u, gpu: %u, emc: %u\n",
+ *		 extra_cpus[0], extra_cpus[1], extra_cpus[2], extra_cpus[3],
+ *		 power_rate->gpu, power_rate->emc);
 */
 	vec.base = extra_cpus;
 	vec.len = power_rate->nr_cpus * sizeof(extra_cpus[0]);
@@ -229,7 +229,7 @@ out_unlock:
 static void
 read_source(struct power_clk_source *s, int cpu)
 {
-	mutex_lock(&s->lock);
+	unsigned int value;
 
 	switch (s->type) {
 	case QUADD_POWER_CLK_CPU:
@@ -239,41 +239,41 @@ read_source(struct power_clk_source *s, int cpu)
 			break;
 		}
 
-		s->data[cpu].value = cpufreq_get(cpu);
+		value = cpufreq_get(cpu);
+
+		mutex_lock(&s->lock);
+		s->data[cpu].value = value;
 		pr_debug("QUADD_POWER_CLK_CPU, cpu: %d, value: %lu\n",
 			 cpu, s->data[cpu].value);
+		mutex_unlock(&s->lock);
 		break;
 
 	case QUADD_POWER_CLK_GPU:
 		/* update gpu frequency */
-		s->clkp = clk_get_sys("gm20b", "gbus");
-		if (!IS_ERR_OR_NULL(s->clkp)) {
+		mutex_lock(&s->lock);
+		if (s->clkp)
 			s->data[0].value =
 				clk_get_rate(s->clkp) / 1000;
-			clk_put(s->clkp);
-		}
 		pr_debug("QUADD_POWER_CLK_GPU, value: %lu\n",
 			 s->data[0].value);
+		mutex_unlock(&s->lock);
 		break;
 
 	case QUADD_POWER_CLK_EMC:
 		/* update emc frequency */
-		s->clkp = clk_get_sys("cpu", "emc");
-		if (!IS_ERR_OR_NULL(s->clkp)) {
+		mutex_lock(&s->lock);
+		if (s->clkp)
 			s->data[0].value =
 				clk_get_rate(s->clkp) / 1000;
-			clk_put(s->clkp);
-		}
 		pr_debug("QUADD_POWER_CLK_EMC, value: %lu\n",
 			 s->data[0].value);
+		mutex_unlock(&s->lock);
 		break;
 
 	default:
 		pr_err_once("error: invalid power_clk type\n");
 		break;
 	}
-
-	mutex_unlock(&s->lock);
 }
 
 static int
@@ -396,18 +396,17 @@ static void reset_data(struct power_clk_source *s)
 {
 	int i;
 
-	mutex_lock(&s->lock);
 	for (i = 0; i < s->nr; i++) {
 		s->data[i].value = 0;
 		s->data[i].prev = 0;
 	}
-	mutex_unlock(&s->lock);
 }
 
 static void init_source(struct power_clk_source *s,
 			int nr_values,
 			int type)
 {
+	s->clkp = NULL;
 	s->type = type;
 	s->nr = min_t(int, nr_values, PCLK_MAX_VALUES);
 	atomic_set(&s->active, 0);
@@ -454,6 +453,81 @@ read_all_sources_work_func(struct work_struct *work)
 
 static DECLARE_WORK(read_all_sources_work, read_all_sources_work_func);
 
+static int
+enable_clock(struct power_clk_source *s, struct notifier_block *nb,
+	     const char *dev_id, const char *con_id)
+{
+	int ret;
+
+	mutex_lock(&s->lock);
+
+	s->clkp = clk_get_sys(dev_id, con_id);
+	if (IS_ERR_OR_NULL(s->clkp)) {
+		pr_warn("warning: could not setup clock: \"%s:%s\"\n",
+			dev_id ? dev_id : "", con_id ? con_id : "");
+		ret = -ENOENT;
+		goto errout;
+	}
+
+	ret = clk_prepare_enable(s->clkp);
+	if (ret) {
+		pr_warn("warning: could not enable gpu clock\n");
+		goto errout_free_clk;
+	}
+
+#ifdef CONFIG_COMMON_CLK
+	ret = clk_notifier_register(s->clkp, nb);
+	if (ret) {
+		pr_warn("warning: could not register clock: \"%s:%s\"\n",
+			dev_id ? dev_id : "", con_id ? con_id : "");
+		goto errout_disable_clk;
+	}
+#endif
+
+	reset_data(s);
+	atomic_set(&s->active, 1);
+
+	mutex_unlock(&s->lock);
+
+	return 0;
+
+#ifdef CONFIG_COMMON_CLK
+errout_disable_clk:
+	clk_disable_unprepare(s->clkp);
+#endif
+
+errout_free_clk:
+	clk_put(s->clkp);
+
+errout:
+	s->clkp = NULL;
+	atomic_set(&s->active, 0);
+
+	mutex_unlock(&s->lock);
+
+	return ret;
+}
+
+static void
+disable_clock(struct power_clk_source *s, struct notifier_block *nb)
+{
+	mutex_lock(&s->lock);
+
+	if (atomic_cmpxchg(&s->active, 1, 0)) {
+		if (s->clkp) {
+#ifdef CONFIG_COMMON_CLK
+			clk_notifier_unregister(s->clkp, nb);
+#endif
+			clk_disable_unprepare(s->clkp);
+			clk_put(s->clkp);
+
+			s->clkp = NULL;
+		}
+	}
+
+	mutex_unlock(&s->lock);
+}
+
 int quadd_power_clk_start(void)
 {
 	struct power_clk_source *s;
@@ -477,48 +551,18 @@ int quadd_power_clk_start(void)
 
 	/* setup gpu frequency */
 	s = &power_ctx.gpu;
-	s->clkp = clk_get_sys("gm20b", "gbus");
-	if (!IS_ERR_OR_NULL(s->clkp)) {
-#ifdef CONFIG_COMMON_CLK
-		status = clk_notifier_register(s->clkp, s->nb);
-		if (status < 0) {
-			pr_err("error: could not setup gpu freq\n");
-			clk_put(s->clkp);
-			return status;
-		}
-#endif
-		clk_put(s->clkp);
-		reset_data(s);
-		atomic_set(&s->active, 1);
-	} else {
-		pr_warn("warning: could not setup gpu freq\n");
-		atomic_set(&s->active, 0);
-	}
+	enable_clock(s, &s->nb[PCLK_NB_GPU], "gm20b", "gbus");
 
 	/* setup emc frequency */
 	s = &power_ctx.emc;
-	s->clkp = clk_get_sys("cpu", "emc");
-	if (!IS_ERR_OR_NULL(s->clkp)) {
-#ifdef CONFIG_COMMON_CLK
-		status = clk_notifier_register(s->clkp, s->nb);
-		if (status < 0) {
-			pr_err("error: could not setup emc freq\n");
-			clk_put(s->clkp);
-			return status;
-		}
-#endif
-		clk_put(s->clkp);
-		reset_data(s);
-		atomic_set(&s->active, 1);
-	} else {
-		pr_warn("warning: could not setup emc freq\n");
-		atomic_set(&s->active, 0);
-	}
+	enable_clock(s, &s->nb[PCLK_NB_EMC], "cpu", "emc");
 
 	/* setup cpu frequency notifier */
 	s = &power_ctx.cpu;
+	mutex_lock(&s->lock);
 	reset_data(s);
 	atomic_set(&s->active, 1);
+	mutex_unlock(&s->lock);
 
 	if (power_ctx.period > 0) {
 		init_timer(timer);
@@ -545,28 +589,15 @@ void quadd_power_clk_stop(void)
 		del_timer_sync(&power_ctx.timer);
 
 	s = &power_ctx.gpu;
-	mutex_lock(&s->lock);
-	if (atomic_cmpxchg(&s->active, 1, 0)) {
-#ifdef CONFIG_COMMON_CLK
-		if (s->clkp)
-			clk_notifier_unregister(s->clkp, &s->nb);
-#endif
-	}
-	mutex_unlock(&s->lock);
+	disable_clock(s, &s->nb[PCLK_NB_GPU]);
 
 	s = &power_ctx.emc;
-	mutex_lock(&s->lock);
-	if (atomic_cmpxchg(&s->active, 1, 0)) {
-#ifdef CONFIG_COMMON_CLK
-		if (s->clkp)
-			clk_notifier_unregister(s->clkp, &s->nb);
-#endif
-	}
-	mutex_unlock(&s->lock);
+	disable_clock(s, &s->nb[PCLK_NB_EMC]);
 
 	s = &power_ctx.cpu;
 	mutex_lock(&s->lock);
 	atomic_set(&s->active, 0);
+	s->clkp = NULL;
 	mutex_unlock(&s->lock);
 
 	pr_info("power_clk: stop\n");

@@ -1,7 +1,7 @@
 /*
  * drivers/misc/tegra-profiler/hrt.c
  *
- * Copyright (c) 2016, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2015-2017, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -43,10 +43,10 @@
 static struct quadd_hrt_ctx hrt;
 
 static void
-read_all_sources(struct pt_regs *regs, struct task_struct *task);
+read_all_sources(struct pt_regs *regs, struct task_struct *task, int is_sched);
 
 struct hrt_event_value {
-	int event_id;
+	struct quadd_event event;
 	u32 value;
 };
 
@@ -67,7 +67,7 @@ static enum hrtimer_restart hrtimer_handler(struct hrtimer *hrtimer)
 	qm_debug_handler_sample(regs);
 
 	if (regs)
-		read_all_sources(regs, current);
+		read_all_sources(regs, current, 0);
 
 	hrtimer_forward_now(hrtimer, ns_to_ktime(hrt.sample_period));
 	qm_debug_timer_forward(regs, hrt.sample_period);
@@ -155,7 +155,7 @@ quadd_put_sample(struct quadd_record_data *data,
 static void put_header(int cpuid)
 {
 	int nr_events = 0, max_events = QUADD_MAX_COUNTERS;
-	int events[QUADD_MAX_COUNTERS];
+	struct quadd_event events[QUADD_MAX_COUNTERS];
 	struct quadd_record_data record;
 	struct quadd_header_data *hdr = &record.hdr;
 	struct quadd_parameters *param = &hrt.quadd_ctx->param;
@@ -276,10 +276,9 @@ static int get_sample_data(struct quadd_sample_data *sample,
 	else
 		sample->ip = instruction_pointer(regs);
 
-	sample->time = quadd_get_time();
 	sample->reserved = 0;
-	sample->pid = task->pid;
-	sample->tgid = task->tgid;
+	sample->pid = task_pid_nr(task);
+	sample->tgid = task_tgid_nr(task);
 	sample->in_interrupt = in_interrupt() ? 1 : 0;
 
 	return 0;
@@ -318,7 +317,7 @@ static int read_source(struct quadd_event_source_interface *source,
 				res_val /= nr_active;
 		}
 
-		events_vals[i].event_id = s->event_id;
+		events_vals[i].event = s->event;
 		events_vals[i].value = res_val;
 	}
 
@@ -348,15 +347,18 @@ get_stack_offset(struct task_struct *task,
 }
 
 static void
-read_all_sources(struct pt_regs *regs, struct task_struct *task)
+read_all_sources(struct pt_regs *regs, struct task_struct *task, int is_sched)
 {
-	u32 state, extra_data = 0, urcs = 0;
+	pid_t vpid, vtgid;
+	u32 state, extra_data = 0, urcs = 0, ts_delta;
+	u64 ts_start, ts_end;
 	int i, vec_idx = 0, bt_size = 0;
 	int nr_events = 0, nr_positive_events = 0;
 	struct pt_regs *user_regs;
-	struct quadd_iovec vec[6];
+	struct quadd_iovec vec[9];
 	struct hrt_event_value events[QUADD_MAX_COUNTERS];
 	u32 events_extra[QUADD_MAX_COUNTERS];
+	struct quadd_event_context event_ctx;
 
 	struct quadd_record_data record_data;
 	struct quadd_sample_data *s = &record_data.sample;
@@ -370,6 +372,8 @@ read_all_sources(struct pt_regs *regs, struct task_struct *task)
 
 	if (task->flags & PF_EXITING)
 		return;
+
+	s->time = ts_start = quadd_get_time();
 
 	if (ctx->pmu && ctx->get_pmu_info()->active)
 		nr_events += read_source(ctx->pmu, regs,
@@ -396,31 +400,17 @@ read_all_sources(struct pt_regs *regs, struct task_struct *task)
 	vec_idx++;
 
 	s->reserved = 0;
-
 	cc->nr = 0;
-	cc->curr_sp = 0;
-	cc->curr_fp = 0;
-	cc->curr_pc = 0;
-	cc->curr_lr = 0;
+
+	event_ctx.regs = user_regs;
+	event_ctx.task = task;
+	event_ctx.user_mode = user_mode(regs);
+	event_ctx.is_sched = is_sched;
 
 	if (ctx->param.backtrace) {
 		cc->um = hrt.um;
 
-		bt_size = quadd_get_user_callchain(user_regs, cc, ctx, task);
-
-		if (!bt_size && !user_mode(regs)) {
-			unsigned long pc = instruction_pointer(user_regs);
-
-			cc->nr = 0;
-#ifdef CONFIG_ARM64
-			cc->cs_64 = compat_user_mode(user_regs) ? 0 : 1;
-#else
-			cc->cs_64 = 0;
-#endif
-			bt_size += quadd_callchain_store(cc, pc,
-							 QUADD_UNW_TYPE_KCTX);
-		}
-
+		bt_size = quadd_get_user_callchain(&event_ctx, cc, ctx);
 		if (bt_size > 0) {
 			int ip_size = cc->cs_64 ? sizeof(u64) : sizeof(u32);
 			int nr_types = DIV_ROUND_UP(bt_size, 8);
@@ -491,6 +481,30 @@ read_all_sources(struct pt_regs *regs, struct task_struct *task)
 		vec_idx++;
 	} else {
 		s->state = 0;
+	}
+
+	ts_end = quadd_get_time();
+	ts_delta = (u32)(ts_end - ts_start);
+
+	vec[vec_idx].base = &ts_delta;
+	vec[vec_idx].len = sizeof(ts_delta);
+	vec_idx++;
+
+	vpid = task_pid_vnr(task);
+	vtgid = task_tgid_vnr(task);
+
+	if (s->pid == vpid && s->tgid == vtgid) {
+		s->is_vpid = 0;
+	} else {
+		vec[vec_idx].base = &vpid;
+		vec[vec_idx].len = sizeof(vpid);
+		vec_idx++;
+
+		vec[vec_idx].base = &vtgid;
+		vec[vec_idx].len = sizeof(vtgid);
+		vec_idx++;
+
+		s->is_vpid = 1;
 	}
 
 	quadd_put_sample_this_cpu(&record_data, vec, vec_idx);
@@ -635,7 +649,7 @@ void __quadd_task_sched_out(struct task_struct *prev,
 	if (is_sample_process(prev)) {
 		user_regs = task_pt_regs(prev);
 		if (user_regs)
-			read_all_sources(user_regs, prev);
+			read_all_sources(user_regs, prev, 1);
 
 		n = remove_active_thread(cpu_ctx, prev->pid);
 		atomic_sub(n, &cpu_ctx->nr_active);
@@ -673,7 +687,7 @@ static void reset_cpu_ctx(void)
 	struct quadd_cpu_context *cpu_ctx;
 	struct quadd_thread_data *t_data;
 
-	for (cpu_id = 0; cpu_id < nr_cpu_ids; cpu_id++) {
+	for_each_possible_cpu(cpu_id) {
 		cpu_ctx = per_cpu_ptr(hrt.cpu_ctx, cpu_id);
 		t_data = &cpu_ctx->active_thread;
 
@@ -733,8 +747,10 @@ int quadd_hrt_start(void)
 	hrt.get_stack_offset =
 		(extra & QUADD_PARAM_EXTRA_STACK_OFFSET) ? 1 : 0;
 
-	for_each_possible_cpu(cpuid)
-		put_header(cpuid);
+	for_each_possible_cpu(cpuid) {
+		if (ctx->pmu->get_arch(cpuid))
+			put_header(cpuid);
+	}
 
 	if (extra & QUADD_PARAM_EXTRA_GET_MMAP) {
 		err = quadd_get_current_mmap(param->pids[0]);
@@ -759,9 +775,9 @@ void quadd_hrt_stop(void)
 {
 	struct quadd_ctx *ctx = hrt.quadd_ctx;
 
-	pr_info("Stop hrt, samples all/skipped: %llu/%llu\n",
-		atomic64_read(&hrt.counter_samples),
-		atomic64_read(&hrt.skipped_samples));
+	pr_info("Stop hrt, samples all/skipped: %lld/%lld\n",
+		(long long)atomic64_read(&hrt.counter_samples),
+		(long long)atomic64_read(&hrt.skipped_samples));
 
 	if (ctx->pl310)
 		ctx->pl310->stop();

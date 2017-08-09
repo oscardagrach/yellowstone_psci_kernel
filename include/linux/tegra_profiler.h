@@ -1,7 +1,7 @@
 /*
  * include/linux/tegra_profiler.h
  *
- * Copyright (c) 2013-2016, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2017, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -19,8 +19,8 @@
 
 #include <linux/ioctl.h>
 
-#define QUADD_SAMPLES_VERSION	36
-#define QUADD_IO_VERSION	20
+#define QUADD_SAMPLES_VERSION	40
+#define QUADD_IO_VERSION	22
 
 #define QUADD_IO_VERSION_DYNAMIC_RB		5
 #define QUADD_IO_VERSION_RB_MAX_FILL_COUNT	6
@@ -36,8 +36,10 @@
 #define QUADD_IO_VERSION_STACK_OFFSET		16
 #define QUADD_IO_VERSION_SECTIONS_INFO		17
 #define QUADD_IO_VERSION_UNW_METHODS_OPT	18
-#define QUADD_IO_VERSION_PER_CPU_SETUP          19
-#define QUADD_IO_VERSION_TRACE_ALL_TASKS        20
+#define QUADD_IO_VERSION_PER_CPU_SETUP		19
+#define QUADD_IO_VERSION_TRACE_ALL_TASKS	20
+#define QUADD_IO_VERSION_CB_POWER_OF_2		21
+#define QUADD_IO_VERSION_RAW_EVENTS		22
 
 #define QUADD_SAMPLE_VERSION_THUMB_MODE_FLAG	17
 #define QUADD_SAMPLE_VERSION_GROUP_SAMPLES	18
@@ -55,8 +57,12 @@
 #define QUADD_SAMPLE_VERSION_SCHED_TASK_STATE	32
 #define QUADD_SAMPLE_VERSION_URCS		33
 #define QUADD_SAMPLE_VERSION_HOTPLUG		34
-#define QUADD_SAMPLE_VERSION_PER_CPU_SETUP      35
-#define QUADD_SAMPLE_VERSION_REPORT_TGID        36
+#define QUADD_SAMPLE_VERSION_PER_CPU_SETUP	35
+#define QUADD_SAMPLE_VERSION_REPORT_TGID	36
+#define QUADD_SAMPLE_VERSION_MMAP_TS		37
+#define QUADD_SAMPLE_VERSION_RAW_EVENTS		38
+#define QUADD_SAMPLE_VERSION_OVERHEAD_INFO	39
+#define QUADD_SAMPLE_VERSION_REPORT_VPID	40
 
 #define QUADD_MMAP_HEADER_VERSION		1
 
@@ -135,30 +141,22 @@
 #define QUADD_CPUMODE_THUMB			(1 << 30)	/* thumb mode */
 
 enum quadd_events_id {
-	QUADD_EVENT_TYPE_CPU_CYCLES = 0,
+	QUADD_EVENT_HW_CPU_CYCLES = 0,
 
-	QUADD_EVENT_TYPE_INSTRUCTIONS,
-	QUADD_EVENT_TYPE_BRANCH_INSTRUCTIONS,
-	QUADD_EVENT_TYPE_BRANCH_MISSES,
-	QUADD_EVENT_TYPE_BUS_CYCLES,
+	QUADD_EVENT_HW_INSTRUCTIONS,
+	QUADD_EVENT_HW_BRANCH_INSTRUCTIONS,
+	QUADD_EVENT_HW_BRANCH_MISSES,
+	QUADD_EVENT_HW_BUS_CYCLES,
 
-	QUADD_EVENT_TYPE_L1_DCACHE_READ_MISSES,
-	QUADD_EVENT_TYPE_L1_DCACHE_WRITE_MISSES,
-	QUADD_EVENT_TYPE_L1_ICACHE_MISSES,
+	QUADD_EVENT_HW_L1_DCACHE_READ_MISSES,
+	QUADD_EVENT_HW_L1_DCACHE_WRITE_MISSES,
+	QUADD_EVENT_HW_L1_ICACHE_MISSES,
 
-	QUADD_EVENT_TYPE_L2_DCACHE_READ_MISSES,
-	QUADD_EVENT_TYPE_L2_DCACHE_WRITE_MISSES,
-	QUADD_EVENT_TYPE_L2_ICACHE_MISSES,
+	QUADD_EVENT_HW_L2_DCACHE_READ_MISSES,
+	QUADD_EVENT_HW_L2_DCACHE_WRITE_MISSES,
+	QUADD_EVENT_HW_L2_ICACHE_MISSES,
 
-	QUADD_EVENT_TYPE_MAX,
-};
-
-struct event_data {
-	int event_source;
-	int event_id;
-
-	u32 val;
-	u32 prev_val;
+	QUADD_EVENT_HW_MAX,
 };
 
 enum quadd_record_type {
@@ -244,7 +242,8 @@ struct quadd_sample_data {
 		thumb_mode:1,
 		state:1,
 		in_interrupt:1,
-		reserved:5;
+		is_vpid:1,
+		reserved:4;
 
 	u8 callchain_nr;
 	u32 events_flags;
@@ -254,6 +253,7 @@ struct quadd_sample_data {
 
 struct quadd_mmap_data {
 	u32 pid;
+	u64 time;
 
 	u64 addr;
 	u64 len;
@@ -375,6 +375,7 @@ struct quadd_header_data {
 
 struct quadd_record_data {
 	u8 record_type;
+	u16 extra_size;
 
 	/* sample: it should be the biggest size */
 	union {
@@ -410,6 +411,18 @@ enum {
 #define QUADD_PARAM_EXTRA_BT_DWARF		(1 << 7)
 #define QUADD_PARAM_EXTRA_PER_PMU_SETUP		(1 << 8)
 
+enum {
+	QUADD_EVENT_TYPE_RAW		= 0,
+	QUADD_EVENT_TYPE_HARDWARE	= 1,
+
+	QUADD_EVENT_TYPE_MAX,
+};
+
+struct quadd_event {
+	u32 type;
+	u32 id;
+};
+
 struct quadd_parameters {
 	u32 freq;
 	u32 ma_freq;
@@ -426,7 +439,7 @@ struct quadd_parameters {
 
 	u8 package_name[QUADD_MAX_PACKAGE_NAME];
 
-	u32 events[QUADD_MAX_COUNTERS];
+	struct quadd_event events[QUADD_MAX_COUNTERS];
 	u32 nr_events;
 
 	u32 reserved[16];	/* reserved fields for future extensions */
@@ -434,7 +447,8 @@ struct quadd_parameters {
 
 struct quadd_pmu_setup_for_cpu {
 	u32 cpuid;
-	u32 events[QUADD_MAX_COUNTERS];
+
+	struct quadd_event events[QUADD_MAX_COUNTERS];
 	u32 nr_events;
 
 	u32 reserved[16];
@@ -454,6 +468,8 @@ struct quadd_events_cap {
 		l2_dcache_read_misses:1,
 		l2_dcache_write_misses:1,
 		l2_icache_misses:1;
+
+	u32 raw_event_mask;
 };
 
 enum {
@@ -489,7 +505,8 @@ struct quadd_comm_cap {
 struct quadd_comm_cap_for_cpu {
 	u32	l2_cache:1,
 		l2_multiple_events:1;
-	int cpuid;
+
+	u8 cpuid;
 	struct quadd_events_cap events_cap;
 };
 

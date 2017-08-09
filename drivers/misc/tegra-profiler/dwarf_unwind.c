@@ -1,7 +1,7 @@
 /*
  * drivers/misc/tegra-profiler/dwarf_unwind.c
  *
- * Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2015-2017, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -26,6 +26,7 @@
 
 #include <linux/tegra_profiler.h>
 
+#include "hrt.h"
 #include "comm.h"
 #include "backtrace.h"
 #include "eh_unwind.h"
@@ -110,18 +111,6 @@ struct regs_state {
 
 #define DW_MAX_RS_STACK_DEPTH	8
 
-struct dwarf_cpu_context {
-	struct regs_state rs_stack[DW_MAX_RS_STACK_DEPTH];
-	int depth;
-
-	int dw_ptr_size;
-};
-
-struct quadd_dwarf_context {
-	struct dwarf_cpu_context __percpu *cpu_ctx;
-	atomic_t started;
-};
-
 struct stackframe {
 	unsigned long pc;
 	unsigned long vregs[QUADD_NUM_REGS];
@@ -132,6 +121,20 @@ struct stackframe {
 	unsigned long cfa;
 
 	int mode;
+	int is_sched;
+};
+
+struct dwarf_cpu_context {
+	struct regs_state rs_stack[DW_MAX_RS_STACK_DEPTH];
+	int depth;
+
+	struct stackframe sf;
+	int dw_ptr_size;
+};
+
+struct quadd_dwarf_context {
+	struct dwarf_cpu_context __percpu *cpu_ctx;
+	atomic_t started;
 };
 
 struct dw_cie {
@@ -178,23 +181,6 @@ struct eh_sec_data {
 	size_t length;
 	unsigned char *data;
 };
-
-#define read_user_data(addr, retval)				\
-({								\
-	long ret;						\
-								\
-	pagefault_disable();					\
-	ret = __get_user(retval, addr);				\
-	pagefault_enable();					\
-								\
-	if (ret) {						\
-		pr_debug("%s: failed for address: %p\n",	\
-			 __func__, addr);			\
-		ret = -QUADD_URC_EACCESS;			\
-	}							\
-								\
-	ret;							\
-})
 
 static struct quadd_dwarf_context ctx;
 
@@ -413,6 +399,29 @@ mmap_addr_to_ex_addr(unsigned long addr,
 	return ti->addr + offset;
 }
 
+static int
+get_section_index_by_address(struct ex_region_info *ri,
+			     unsigned long addr)
+{
+	int i;
+	struct extab_info *ti;
+	unsigned long start, end;
+
+	for (i = 0; i < ARRAY_SIZE(ri->ex_sec); i++) {
+		ti = &ri->ex_sec[i];
+
+		if (ti->length > 0) {
+			start = ti->addr;
+			end = start + ti->length;
+
+			if (addr >= start && addr < end)
+				return i;
+		}
+	}
+
+	return -QUADD_URC_IDX_NOT_FOUND;
+}
+
 static inline int validate_regnum(struct regs_state *rs, int regnum)
 {
 	if (unlikely(regnum >= ARRAY_SIZE(rs->reg))) {
@@ -437,7 +446,7 @@ set_rule_offset(struct regs_state *rs, int regnum, int where, long offset)
 	r->loc.offset = offset;
 }
 
-static inline void
+static inline void __maybe_unused
 set_rule_reg(struct regs_state *rs, int regnum, int where, unsigned long reg)
 {
 	struct reg_info *r;
@@ -554,7 +563,7 @@ dwarf_read_sleb128(struct ex_region_info *ri,
 	num_bits = 8 * sizeof(result);
 
 	if ((shift < num_bits) && (byte & 0x40))
-		result |= (-1 << shift);
+		result |= (-1L << shift);
 
 	*ret = result;
 
@@ -732,22 +741,28 @@ dwarf_read_encoded_value(struct ex_region_info *ri,
 
 	if (res != 0) {
 		if (encoding & DW_EH_PE_indirect) {
-			pr_debug("DW_EH_PE_indirect\n");
+			int sec_idx;
 
-			if (dw_ptr_size == 4) {
-				res = read_mmap_data_u32(ri, (u32 *)res,
-							 st, &err);
-			} else if (dw_ptr_size == 8) {
-				res = read_mmap_data_u64(ri, (u64 *)res,
-							 st, &err);
+			pr_debug("DW_EH_PE_indirect, addr: %#lx\n", res);
+
+			sec_idx = get_section_index_by_address(ri, res);
+			if (sec_idx >= 0) {
+				if (dw_ptr_size == 4) {
+					res = read_mmap_data_u32(ri, (u32 *)res,
+								 sec_idx, &err);
+				} else if (dw_ptr_size == 8) {
+					res = read_mmap_data_u64(ri, (u64 *)res,
+								 sec_idx, &err);
+				} else {
+					return -QUADD_URC_UNHANDLED_INSTRUCTION;
+				}
+
+				if (err)
+					return err;
 			} else {
-				pr_err_once("error: wrong dwarf size\n");
-				return -QUADD_URC_UNHANDLED_INSTRUCTION;
-			}
-
-			/* we ignore links to unloaded sections */
-			if (err)
+				/* we ignore links to unloaded sections */
 				res = 0;
+			}
 		}
 	}
 
@@ -1585,6 +1600,7 @@ dwarf_decode_fde_cie(struct ex_region_info *ri,
 
 static void *
 dwarf_find_fde(struct ex_region_info *ri,
+	       struct stackframe *sf,
 	       void *data,
 	       unsigned long length,
 	       unsigned long pc,
@@ -1642,8 +1658,9 @@ dwarf_find_fde(struct ex_region_info *ri,
 			start = fde.initial_location;
 			end = start + fde.address_range;
 
-			quadd_unwind_set_tail_info(ri->vm_start, secid,
-						   start, end);
+			if (sf && !sf->is_sched)
+				quadd_unwind_set_tail_info(ri->vm_start, secid,
+							   start, end);
 		}
 
 		pr_debug("pc: %#lx, last bst entry: %#lx - %#lx",
@@ -1683,7 +1700,7 @@ __is_fde_entry_exist(struct ex_region_info *ri, unsigned long addr, int is_eh)
 
 	hdr_len = ti->length;
 
-	fde_p = dwarf_find_fde(ri, hdr_start, hdr_len, addr, is_eh);
+	fde_p = dwarf_find_fde(ri, NULL, hdr_start, hdr_len, addr, is_eh);
 
 	return fde_p ? 1 : 0;
 }
@@ -1712,6 +1729,7 @@ is_fde_entry_exist(struct ex_region_info *ri,
 
 static long
 dwarf_decode(struct ex_region_info *ri,
+	     struct stackframe *sf,
 	     struct dw_cie *cie,
 	     struct dw_fde *fde,
 	     unsigned long pc,
@@ -1737,7 +1755,7 @@ dwarf_decode(struct ex_region_info *ri,
 	pr_debug("eh frame hdr: %p - %p\n",
 		 hdr_start, hdr_start + hdr_len);
 
-	fde_p = dwarf_find_fde(ri, hdr_start, hdr_len, pc, is_eh);
+	fde_p = dwarf_find_fde(ri, sf, hdr_start, hdr_len, pc, is_eh);
 	if (!fde_p)
 		return -QUADD_URC_IDX_NOT_FOUND;
 
@@ -1790,7 +1808,7 @@ unwind_frame(struct ex_region_info *ri,
 	struct regs_state *rs, *rs_initial;
 	int mode = sf->mode;
 
-	err = dwarf_decode(ri, &cie, &fde, pc, is_eh);
+	err = dwarf_decode(ri, sf, &cie, &fde, pc, is_eh);
 	if (err < 0)
 		return err;
 
@@ -1877,11 +1895,17 @@ unwind_frame(struct ex_region_info *ri,
 			if (!validate_stack_addr(addr, vma_sp, user_reg_size))
 				return -QUADD_URC_SP_INCORRECT;
 
-			if (mode == DW_MODE_ARM32)
-				err = read_user_data((u32 __user *)addr, val);
-			else
-				err = read_user_data((unsigned long __user *)
-						     addr, val);
+			if (mode == DW_MODE_ARM32) {
+				u32 val32;
+
+				err = read_user_data(&val32,
+						     (void __user *)addr,
+						     sizeof(u32));
+				val = val32;
+			} else {
+				err = read_user_data(&val, (void __user *)addr,
+						     sizeof(unsigned long));
+			}
 
 			if (err < 0)
 				return err;
@@ -1928,7 +1952,7 @@ unwind_backtrace(struct quadd_callchain *cc,
 
 	while (1) {
 		long sp, err;
-		int nr_added;
+		int nr_added, is_stack_ok;
 		int __is_eh, __is_debug;
 		struct vm_area_struct *vma_pc;
 		unsigned long addr, where = sf->pc;
@@ -2009,6 +2033,14 @@ unwind_backtrace(struct quadd_callchain *cc,
 		cc->curr_pc = sf->pc;
 		cc->curr_lr = sf->vregs[regnum_lr(mode)];
 
+		is_stack_ok = cc->nr > 0 ?
+			cc->curr_sp > sp : cc->curr_sp >= sp;
+
+		if (!is_stack_ok) {
+			cc->urc_dwarf = QUADD_URC_SP_INCORRECT;
+			break;
+		}
+
 		nr_added = quadd_callchain_store(cc, sf->pc, unw_type);
 		if (nr_added == 0)
 			break;
@@ -2016,15 +2048,15 @@ unwind_backtrace(struct quadd_callchain *cc,
 }
 
 int
-quadd_is_ex_entry_exist_dwarf(struct pt_regs *regs,
-			      unsigned long addr,
-			      struct task_struct *task)
+quadd_is_ex_entry_exist_dwarf(struct quadd_event_context *event_ctx,
+			      unsigned long addr)
 {
 	long err;
 	int is_eh, is_debug;
 	struct ex_region_info ri;
 	struct vm_area_struct *vma;
-	struct mm_struct *mm = task->mm;
+	struct pt_regs *regs = event_ctx->regs;
+	struct mm_struct *mm = event_ctx->task->mm;
 
 	if (!regs || !mm)
 		return 0;
@@ -2041,17 +2073,18 @@ quadd_is_ex_entry_exist_dwarf(struct pt_regs *regs,
 }
 
 unsigned int
-quadd_get_user_cc_dwarf(struct pt_regs *regs,
-			struct quadd_callchain *cc,
-			struct task_struct *task)
+quadd_get_user_cc_dwarf(struct quadd_event_context *event_ctx,
+			struct quadd_callchain *cc)
 {
 	long err;
 	int mode, nr_prev = cc->nr;
 	unsigned long ip, lr, sp, fp, fp_thumb;
 	struct vm_area_struct *vma, *vma_sp;
-	struct mm_struct *mm = task->mm;
 	struct ex_region_info ri;
-	struct stackframe sf;
+	struct stackframe *sf;
+	struct pt_regs *regs = event_ctx->regs;
+	struct task_struct *task = event_ctx->task;
+	struct mm_struct *mm = task->mm;
 	struct dwarf_cpu_context *cpu_ctx = this_cpu_ptr(ctx.cpu_ctx);
 
 	if (!regs || !mm)
@@ -2062,7 +2095,7 @@ quadd_get_user_cc_dwarf(struct pt_regs *regs,
 
 	cc->urc_dwarf = QUADD_URC_FAILURE;
 
-	if (nr_prev > 0) {
+	if (cc->curr_sp) {
 		ip = cc->curr_pc;
 		sp = cc->curr_sp;
 		fp = cc->curr_fp;
@@ -2098,20 +2131,23 @@ quadd_get_user_cc_dwarf(struct pt_regs *regs,
 	pr_debug("%s: sp: %#lx, fp: %#lx, fp_thumb: %#lx\n",
 		 __func__, sp, fp, fp_thumb);
 
-	sf.vregs[regnum_lr(mode)] = lr;
-	sf.pc = ip;
+	sf = &cpu_ctx->sf;
 
-	sf.vregs[regnum_sp(mode)] = sp;
-	sf.vregs[regnum_fp(mode)] = fp;
+	sf->vregs[regnum_lr(mode)] = lr;
+	sf->pc = ip;
+
+	sf->vregs[regnum_sp(mode)] = sp;
+	sf->vregs[regnum_fp(mode)] = fp;
 
 	if (mode == DW_MODE_ARM32)
-		sf.vregs[ARM32_FP_THUMB] = fp_thumb;
+		sf->vregs[ARM32_FP_THUMB] = fp_thumb;
 
 	cpu_ctx->dw_ptr_size = (mode == DW_MODE_ARM32) ?
 				sizeof(u32) : sizeof(u64);
 
-	sf.mode = mode;
-	sf.cfa = 0;
+	sf->mode = mode;
+	sf->is_sched = event_ctx->is_sched;
+	sf->cfa = 0;
 
 	vma = find_vma(mm, ip);
 	if (!vma)
@@ -2127,7 +2163,7 @@ quadd_get_user_cc_dwarf(struct pt_regs *regs,
 		return 0;
 	}
 
-	unwind_backtrace(cc, &ri, &sf, vma_sp, task);
+	unwind_backtrace(cc, &ri, sf, vma_sp, task);
 
 	pr_debug("%s: mode: %s, cc->nr: %d --> %d\n", __func__,
 		 (mode == DW_MODE_ARM32) ? "arm32" : "arm64",

@@ -1,7 +1,7 @@
 /*
  * drivers/misc/tegra-profiler/exh_tables.c
  *
- * Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2015-2017, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -117,23 +117,6 @@ validate_mmap_addr(struct quadd_mmap_area *mmap,
 	return 1;
 }
 
-#define read_user_data(addr, retval)				\
-({								\
-	long ret;						\
-								\
-	pagefault_disable();					\
-	ret = __get_user(retval, addr);				\
-	pagefault_enable();					\
-								\
-	if (ret) {						\
-		pr_debug("%s: failed for address: %p\n",	\
-			 __func__, addr);			\
-		ret = -QUADD_URC_EACCESS;			\
-	}							\
-								\
-	ret;							\
-})
-
 static inline long
 read_mmap_data(struct quadd_mmap_area *mmap, const u32 *addr, u32 *retval)
 {
@@ -178,13 +161,15 @@ mmap_addr_to_ex_addr(unsigned long addr,
 	return ti->addr + offset;
 }
 
-static inline u32
+static inline u32 __maybe_unused
 prel31_to_addr(const u32 *ptr)
 {
+	long err;
 	u32 value;
 	s32 offset;
 
-	if (read_user_data(ptr, value))
+	err = read_user_data(&value, ptr, sizeof(*ptr));
+	if (err < 0)
 		return 0;
 
 	/* sign-extend to 32 bits */
@@ -811,7 +796,8 @@ unwind_exec_insn(struct quadd_mmap_area *mmap,
 		load_sp = mask & (1 << (13 - 4));
 		while (mask) {
 			if (mask & 1) {
-				err = read_user_data(vsp++, ctrl->vrs[reg]);
+				err = read_user_data(&ctrl->vrs[reg], vsp++,
+						     sizeof(u32));
 				if (err < 0)
 					return err;
 
@@ -836,7 +822,8 @@ unwind_exec_insn(struct quadd_mmap_area *mmap,
 
 		/* pop R4-R[4+bbb] */
 		for (reg = 4; reg <= 4 + (insn & 7); reg++) {
-			err = read_user_data(vsp++, ctrl->vrs[reg]);
+			err = read_user_data(&ctrl->vrs[reg], vsp++,
+					     sizeof(u32));
 			if (err < 0)
 				return err;
 
@@ -845,7 +832,8 @@ unwind_exec_insn(struct quadd_mmap_area *mmap,
 		}
 
 		if (insn & 0x08) {
-			err = read_user_data(vsp++, ctrl->vrs[14]);
+			err = read_user_data(&ctrl->vrs[14], vsp++,
+					     sizeof(u32));
 			if (err < 0)
 				return err;
 
@@ -879,7 +867,8 @@ unwind_exec_insn(struct quadd_mmap_area *mmap,
 		/* pop R0-R3 according to mask */
 		while (mask) {
 			if (mask & 1) {
-				err = read_user_data(vsp++, ctrl->vrs[reg]);
+				err = read_user_data(&ctrl->vrs[reg], vsp++,
+						     sizeof(u32));
 				if (err < 0)
 					return err;
 
@@ -1176,17 +1165,18 @@ unwind_backtrace(struct quadd_callchain *cc,
 }
 
 unsigned int
-quadd_get_user_cc_arm32_ehabi(struct pt_regs *regs,
-			      struct quadd_callchain *cc,
-			      struct task_struct *task)
+quadd_get_user_cc_arm32_ehabi(struct quadd_event_context *event_ctx,
+			      struct quadd_callchain *cc)
 {
 	long err;
 	int nr_prev = cc->nr, thumbflag;
 	unsigned long ip, sp, lr;
 	struct vm_area_struct *vma, *vma_sp;
-	struct mm_struct *mm = task->mm;
 	struct ex_region_info ri;
 	struct stackframe frame;
+	struct pt_regs *regs = event_ctx->regs;
+	struct task_struct *task = event_ctx->task;
+	struct mm_struct *mm = task->mm;
 
 	if (!regs || !mm)
 		return 0;
@@ -1201,7 +1191,7 @@ quadd_get_user_cc_arm32_ehabi(struct pt_regs *regs,
 
 	cc->urc_ut = QUADD_URC_FAILURE;
 
-	if (nr_prev > 0) {
+	if (cc->curr_sp) {
 		ip = cc->curr_pc;
 		sp = cc->curr_sp;
 		lr = cc->curr_lr;
@@ -1255,16 +1245,16 @@ quadd_get_user_cc_arm32_ehabi(struct pt_regs *regs,
 }
 
 int
-quadd_is_ex_entry_exist_arm32_ehabi(struct pt_regs *regs,
-				    unsigned long addr,
-				    struct task_struct *task)
+quadd_is_ex_entry_exist_arm32_ehabi(struct quadd_event_context *event_ctx,
+				    unsigned long addr)
 {
 	long err;
 	u32 value;
 	const struct unwind_idx *idx;
 	struct ex_region_info ri;
 	struct vm_area_struct *vma;
-	struct mm_struct *mm = task->mm;
+	struct pt_regs *regs = event_ctx->regs;
+	struct mm_struct *mm = event_ctx->task->mm;
 
 	if (!regs || !mm)
 		return 0;

@@ -1,7 +1,7 @@
 /*
  * drivers/misc/tegra-profiler/disassembler.c
  *
- * Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2015-2016, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -24,26 +24,8 @@
 #include <linux/tegra_profiler.h>
 
 #include "tegra.h"
+#include "backtrace.h"
 #include "disassembler.h"
-
-/* FIXME: grossly duplicated */
-
-#define read_user_data(addr, retval)				\
-({								\
-	long ret;						\
-								\
-	pagefault_disable();					\
-	ret = __get_user(retval, addr);				\
-	pagefault_enable();					\
-								\
-	if (ret) {						\
-		pr_debug("%s: failed for address: %p\n",	\
-			 __func__, addr);			\
-		ret = -QUADD_URC_EACCESS;			\
-	}							\
-								\
-	ret;							\
-})
 
 static long
 quadd_arm_imm(u32 val)
@@ -74,13 +56,16 @@ quadd_print_reg(char *buf, size_t size, int reg)
 static long
 quadd_disassemble_arm(struct quadd_disasm_data *qd)
 {
+	long err;
 	unsigned long addr;
 
 	for (addr = qd->min; addr < qd->max; addr += 4) {
 		u32 val;
 
-		if (read_user_data((const u32 __user *) addr, val) < 0)
-			return -QUADD_URC_EACCESS;
+		err = read_user_data(&val, (const void __user *)addr,
+				     sizeof(u32));
+		if (err < 0)
+			return err;
 
 		if (((val & 0x0def0ff0) == 0x01a00000) &&
 		    !quadd_stack_found(qd)) {
@@ -160,13 +145,16 @@ quadd_disassemble_arm(struct quadd_disasm_data *qd)
 static long
 quadd_disassemble_thumb(struct quadd_disasm_data *qd)
 {
+	long err;
 	unsigned long addr;
 
 	for (addr = qd->min; addr < qd->max; addr += 2) {
 		u16 val1;
 
-		if (read_user_data((const u16 __user *) addr, val1) < 0)
-			return -QUADD_URC_EACCESS;
+		err = read_user_data(&val1, (const void __user *)addr,
+				     sizeof(u16));
+		if (err < 0)
+			return err;
 
 		if ((val1 & 0xf800) == 0xa800 && !quadd_stack_found(qd)) {
 			/* add x, sp, i */
@@ -208,9 +196,11 @@ quadd_disassemble_thumb(struct quadd_disasm_data *qd)
 			u16 val2;
 			u32 val;
 
-			if (read_user_data((const u16 __user *)
-					   (addr + 2), val2) < 0)
-				return -QUADD_URC_EACCESS;
+			err = read_user_data(&val2, (const void __user *)
+					     (addr + 2), sizeof(u16));
+			if (err < 0)
+				return err;
+
 			val = (val1 << 16) | val2;
 			addr += 2;
 
