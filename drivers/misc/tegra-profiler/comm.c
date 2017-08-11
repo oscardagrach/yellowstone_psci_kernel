@@ -1,7 +1,7 @@
 /*
  * drivers/misc/tegra-profiler/comm.c
  *
- * Copyright (c) 2013-2016, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2017, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -21,11 +21,10 @@
 #include <linux/vmalloc.h>
 #include <linux/miscdevice.h>
 #include <linux/sched.h>
-#include <linux/poll.h>
 #include <linux/bitops.h>
 #include <linux/err.h>
 #include <linux/mm.h>
-
+#include <linux/circ_buf.h>
 #include <linux/uaccess.h>
 
 #include <linux/tegra_profiler.h>
@@ -42,7 +41,7 @@ struct quadd_ring_buffer {
 
 	struct quadd_mmap_area *mmap;
 
-	spinlock_t lock;
+	raw_spinlock_t lock;
 };
 
 struct quadd_comm_ctx {
@@ -54,8 +53,6 @@ struct quadd_comm_ctx {
 	int nr_users;
 
 	int params_ok;
-
-	wait_queue_head_t read_wait;
 
 	struct miscdevice *misc_dev;
 
@@ -71,130 +68,102 @@ struct comm_cpu_context {
 static struct quadd_comm_ctx comm_ctx;
 static DEFINE_PER_CPU(struct comm_cpu_context, cpu_ctx);
 
-static int __maybe_unused
-rb_is_full(struct quadd_ring_buffer *rb)
-{
-	struct quadd_ring_buffer_hdr *rb_hdr = rb->rb_hdr;
-
-	return (rb_hdr->pos_write + 1) % rb_hdr->size == rb_hdr->pos_read;
-}
-
-static int __maybe_unused
-rb_is_empty(struct quadd_ring_buffer *rb)
-{
-	struct quadd_ring_buffer_hdr *rb_hdr = rb->rb_hdr;
-
-	return rb_hdr->pos_read == rb_hdr->pos_write;
-}
-
-static size_t
-rb_get_filled_space(struct quadd_ring_buffer_hdr *rb_hdr)
-{
-	return (rb_hdr->pos_write >= rb_hdr->pos_read) ?
-		rb_hdr->pos_write - rb_hdr->pos_read :
-		rb_hdr->pos_write + rb_hdr->size - rb_hdr->pos_read;
-}
-
-static size_t
-rb_get_free_space(struct quadd_ring_buffer_hdr *rb_hdr)
-{
-	return rb_hdr->size - rb_get_filled_space(rb_hdr) - 1;
-}
-
-static ssize_t
+static void
 rb_write(struct quadd_ring_buffer_hdr *rb_hdr,
-	 char *mmap_buf, void *data, size_t length)
+	 char *buf, const void *data, size_t length)
 {
-	size_t new_pos_write, chunk1;
+	size_t len, head = rb_hdr->pos_write;
+	const char *s = data;
 
-	new_pos_write = (rb_hdr->pos_write + length) % rb_hdr->size;
+	len = min_t(size_t, rb_hdr->size - head, length);
 
-	if (new_pos_write < rb_hdr->pos_write) {
-		chunk1 = rb_hdr->size - rb_hdr->pos_write;
+	memcpy(buf + head, s, len);
+	head = (head + len) & (rb_hdr->size - 1);
 
-		memcpy(mmap_buf + rb_hdr->pos_write, data, chunk1);
+	if (length > len) {
+		s += len;
+		len = length - len;
 
-		if (new_pos_write > 0)
-			memcpy(mmap_buf, data + chunk1, new_pos_write);
-	} else {
-		memcpy(mmap_buf + rb_hdr->pos_write, data, length);
+		memcpy(buf + head, s, len);
+		head += len;
 	}
 
-	rb_hdr->pos_write = new_pos_write;
-	return length;
+	rb_hdr->pos_write = head;
 }
 
 static ssize_t
 write_sample(struct quadd_ring_buffer *rb,
 	     struct quadd_record_data *sample,
-	     struct quadd_iovec *vec, int vec_count)
+	     const struct quadd_iovec *vec, int vec_count)
 {
 	int i;
-	ssize_t err;
-	size_t length_sample, fill_count;
-	struct quadd_ring_buffer_hdr *rb_hdr = rb->rb_hdr, new_hdr;
+	size_t len = 0, c;
+	struct quadd_ring_buffer_hdr hdr, *rb_hdr = rb->rb_hdr;
 
 	if (!rb_hdr)
 		return -EIO;
 
-	length_sample = sizeof(*sample);
-	for (i = 0; i < vec_count; i++)
-		length_sample += vec[i].len;
+	if (vec) {
+		for (i = 0; i < vec_count; i++)
+			len += vec[i].len;
+	}
 
-	new_hdr.size = rb_hdr->size;
-	new_hdr.pos_write = rb_hdr->pos_write;
-	new_hdr.pos_read = rb_hdr->pos_read;
+	sample->extra_size = len;
+	len += sizeof(*sample);
 
-	pr_debug("[cpu: %d] type/len: %u/%#zx, read/write pos: %#x/%#x, free: %#zx\n",
-		smp_processor_id(),
-		sample->record_type,
-		length_sample,
-		new_hdr.pos_read, new_hdr.pos_write,
-		rb_get_free_space(&new_hdr));
+	hdr.size = rb_hdr->size;
+	hdr.pos_write = rb_hdr->pos_write;
+	hdr.pos_read = ACCESS_ONCE(rb_hdr->pos_read);
 
-	if (length_sample > rb_get_free_space(&new_hdr)) {
+	c = CIRC_SPACE(hdr.pos_write, hdr.pos_read, hdr.size);
+	if (len > c) {
 		pr_err_once("[cpu: %d] warning: buffer has been overflowed\n",
 			    smp_processor_id());
 		return -ENOSPC;
 	}
 
-	err = rb_write(&new_hdr, rb->buf, sample, sizeof(*sample));
-	if (err < 0)
-		return err;
+	rb_write(&hdr, rb->buf, sample, sizeof(*sample));
 
-	for (i = 0; i < vec_count; i++) {
-		err = rb_write(&new_hdr, rb->buf, vec[i].base, vec[i].len);
-		if (err < 0)
-			return err;
+	if (vec) {
+		for (i = 0; i < vec_count; i++)
+			rb_write(&hdr, rb->buf, vec[i].base, vec[i].len);
 	}
 
-	fill_count = rb_get_filled_space(&new_hdr);
-	if (fill_count > rb->max_fill_count) {
-		rb->max_fill_count = fill_count;
-		rb_hdr->max_fill_count = fill_count;
+	c = CIRC_CNT(hdr.pos_write, hdr.pos_read, hdr.size);
+	if (c > rb->max_fill_count) {
+		rb->max_fill_count = c;
+		rb_hdr->max_fill_count = c;
 	}
 
-	rb_hdr->pos_write = new_hdr.pos_write;
-	wake_up_all(&comm_ctx.read_wait);
+	smp_store_release(&rb_hdr->pos_write, hdr.pos_write);
 
-	return length_sample;
+	return len;
 }
 
 static size_t get_data_size(void)
 {
 	int cpu_id;
-	size_t size = 0;
+	unsigned long flags;
+	size_t size = 0, tail;
 	struct comm_cpu_context *cc;
 	struct quadd_ring_buffer *rb;
+	struct quadd_ring_buffer_hdr *rb_hdr;
 
 	for_each_possible_cpu(cpu_id) {
 		cc = &per_cpu(cpu_ctx, cpu_id);
 
 		rb = &cc->rb;
-		if (!rb->rb_hdr)
+
+		rb_hdr = rb->rb_hdr;
+		if (!rb_hdr)
 			continue;
 
-		size +=  rb_get_filled_space(rb->rb_hdr);
+		raw_spin_lock_irqsave(&rb->lock, flags);
+
+		tail = ACCESS_ONCE(rb_hdr->pos_read);
+		size += CIRC_CNT(rb_hdr->pos_write, tail, rb_hdr->size);
+
+		raw_spin_unlock_irqrestore(&rb->lock, flags);
 	}
 
 	return size;
@@ -219,7 +188,7 @@ put_sample(struct quadd_record_data *data,
 
 	rb = &cc->rb;
 
-	spin_lock_irqsave(&rb->lock, flags);
+	raw_spin_lock_irqsave(&rb->lock, flags);
 
 	err = write_sample(rb, data, vec, vec_count);
 	if (err < 0) {
@@ -231,7 +200,7 @@ put_sample(struct quadd_record_data *data,
 			rb_hdr->skipped_samples++;
 	}
 
-	spin_unlock_irqrestore(&rb->lock, flags);
+	raw_spin_unlock_irqrestore(&rb->lock, flags);
 
 	return err;
 }
@@ -291,27 +260,11 @@ static int device_release(struct inode *inode, struct file *file)
 	return 0;
 }
 
-static unsigned int
-device_poll(struct file *file, poll_table *wait)
-{
-	unsigned int mask = 0;
-
-	poll_wait(file, &comm_ctx.read_wait, wait);
-
-	if (get_data_size() > 0)
-		mask |= POLLIN | POLLRDNORM;
-
-	if (!atomic_read(&comm_ctx.active))
-		mask |= POLLHUP;
-
-	return mask;
-}
-
 static int
 init_mmap_hdr(struct quadd_mmap_rb_info *mmap_rb,
 	      struct quadd_mmap_area *mmap)
 {
-	int cpu_id;
+	unsigned int cpu_id;
 	size_t size;
 	unsigned long flags;
 	struct vm_area_struct *vma;
@@ -324,23 +277,31 @@ init_mmap_hdr(struct quadd_mmap_rb_info *mmap_rb,
 		return -EIO;
 
 	cpu_id = mmap_rb->cpu_id;
+
+	if (!cpu_possible(cpu_id))
+		return -EINVAL;
+
 	cc = &per_cpu(cpu_ctx, cpu_id);
 
 	rb = &cc->rb;
 
-	spin_lock_irqsave(&rb->lock, flags);
+	vma = mmap->mmap_vma;
+	size = vma->vm_end - vma->vm_start;
+
+	if (size <= PAGE_SIZE || !is_power_of_2(size - PAGE_SIZE))
+		return -EINVAL;
+
+	size -= PAGE_SIZE;
+
+	raw_spin_lock_irqsave(&rb->lock, flags);
 
 	mmap->rb = rb;
 
 	rb->mmap = mmap;
+	rb->buf = (char *)mmap->data + PAGE_SIZE;
 
 	rb->max_fill_count = 0;
 	rb->nr_skipped_samples = 0;
-
-	vma = mmap->mmap_vma;
-
-	size = vma->vm_end - vma->vm_start;
-	size -= sizeof(*mmap_hdr) + sizeof(*rb_hdr);
 
 	mmap_hdr = mmap->data;
 
@@ -359,11 +320,9 @@ init_mmap_hdr(struct quadd_mmap_rb_info *mmap_rb,
 	rb_hdr->max_fill_count = 0;
 	rb_hdr->skipped_samples = 0;
 
-	rb->buf = (char *)(rb_hdr + 1);
-
 	rb_hdr->state = QUADD_RB_STATE_ACTIVE;
 
-	spin_unlock_irqrestore(&rb->lock, flags);
+	raw_spin_unlock_irqrestore(&rb->lock, flags);
 
 	pr_info("[cpu: %d] init_mmap_hdr: vma: %#lx - %#lx, data: %p - %p\n",
 		cpu_id,
@@ -403,28 +362,33 @@ static void rb_reset(struct quadd_ring_buffer *rb)
 	if (!rb)
 		return;
 
-	spin_lock_irqsave(&rb->lock, flags);
+	raw_spin_lock_irqsave(&rb->lock, flags);
 
 	rb->mmap = NULL;
 	rb->buf = NULL;
 	rb->rb_hdr = NULL;
 
-	spin_unlock_irqrestore(&rb->lock, flags);
+	raw_spin_unlock_irqrestore(&rb->lock, flags);
 }
 
 static int
 ready_to_profile(void)
 {
-	int cpuid;
+	int cpuid, is_cpu_present;
+	struct comm_cpu_context *cc;
 
 	if (!comm_ctx.params_ok)
 		return 0;
 
 	for_each_possible_cpu(cpuid) {
-		struct comm_cpu_context *cc = &per_cpu(cpu_ctx, cpuid);
+		is_cpu_present = comm_ctx.control->is_cpu_present(cpuid);
 
-		if (!cc->params_ok)
-			return 0;
+		if (is_cpu_present) {
+			cc = &per_cpu(cpu_ctx, cpuid);
+
+			if (!cc->params_ok)
+				return 0;
+		}
 	}
 
 	return 1;
@@ -449,6 +413,7 @@ device_ioctl(struct file *file,
 	     unsigned long ioctl_param)
 {
 	int err = 0;
+	unsigned int cpuid;
 	struct quadd_mmap_area *mmap;
 	struct quadd_parameters *user_params;
 	struct quadd_pmu_setup_for_cpu *cpu_pmu_params;
@@ -496,7 +461,15 @@ device_ioctl(struct file *file,
 			goto error_out;
 		}
 
-		per_cpu(cpu_ctx, cpu_pmu_params->cpuid).params_ok = 0;
+		cpuid = cpu_pmu_params->cpuid;
+
+		if (!cpu_possible(cpuid)) {
+			vfree(cpu_pmu_params);
+			err = -EINVAL;
+			goto error_out;
+		}
+
+		per_cpu(cpu_ctx, cpuid).params_ok = 0;
 
 		err = comm_ctx.control->set_parameters_for_cpu(cpu_pmu_params);
 		if (err) {
@@ -505,14 +478,12 @@ device_ioctl(struct file *file,
 			goto error_out;
 		}
 
-		per_cpu(cpu_ctx, cpu_pmu_params->cpuid).params_ok = 1;
+		per_cpu(cpu_ctx, cpuid).params_ok = 1;
 
-		pr_info("setup PMU success for cpu: %d\n",
-			cpu_pmu_params->cpuid);
+		pr_info("setup PMU success for cpu: %d\n", cpuid);
 
 		vfree(cpu_pmu_params);
 		break;
-
 
 	case IOCTL_SETUP:
 		if (atomic_read(&comm_ctx.active)) {
@@ -586,8 +557,16 @@ device_ioctl(struct file *file,
 			err = -EFAULT;
 			goto error_out;
 		}
-		comm_ctx.control->get_capabilities_for_cpu(per_cpu_cap->cpuid,
-							   per_cpu_cap);
+
+		cpuid = per_cpu_cap->cpuid;
+
+		if (!cpu_possible(cpuid)) {
+			vfree(per_cpu_cap);
+			err = -EINVAL;
+			goto error_out;
+		}
+
+		comm_ctx.control->get_capabilities_for_cpu(cpuid, per_cpu_cap);
 
 		if (copy_to_user((void __user *)ioctl_param, per_cpu_cap,
 				 sizeof(*per_cpu_cap))) {
@@ -603,8 +582,10 @@ device_ioctl(struct file *file,
 	case IOCTL_GET_VERSION:
 		memset(&versions, 0, sizeof(versions));
 
-		strcpy((char *)versions.branch, QUADD_MODULE_BRANCH);
-		strcpy((char *)versions.version, QUADD_MODULE_VERSION);
+		strlcpy((char *)versions.branch, QUADD_MODULE_BRANCH,
+			sizeof(versions.branch));
+		strlcpy((char *)versions.version, QUADD_MODULE_VERSION,
+			sizeof(versions.version));
 
 		versions.samples_version = QUADD_SAMPLES_VERSION;
 		versions.io_version = QUADD_IO_VERSION;
@@ -648,7 +629,6 @@ device_ioctl(struct file *file,
 		if (atomic_cmpxchg(&comm_ctx.active, 1, 0)) {
 			reset_params_ok_flag();
 			comm_ctx.control->stop();
-			wake_up_all(&comm_ctx.read_wait);
 			rb_stop();
 			pr_info("Stop profiling success\n");
 		}
@@ -867,7 +847,6 @@ static void unregister(void)
 }
 
 static const struct file_operations qm_fops = {
-	.poll		= device_poll,
 	.open		= device_open,
 	.release	= device_release,
 	.unlocked_ioctl	= device_ioctl,
@@ -901,8 +880,6 @@ static int comm_init(void)
 
 	comm_ctx.nr_users = 0;
 
-	init_waitqueue_head(&comm_ctx.read_wait);
-
 	INIT_LIST_HEAD(&comm_ctx.mmap_areas);
 	spin_lock_init(&comm_ctx.mmaps_lock);
 
@@ -917,7 +894,7 @@ static int comm_init(void)
 		rb->max_fill_count = 0;
 		rb->nr_skipped_samples = 0;
 
-		spin_lock_init(&rb->lock);
+		raw_spin_lock_init(&rb->lock);
 	}
 
 	reset_params_ok_flag();

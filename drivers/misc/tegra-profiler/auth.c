@@ -1,7 +1,7 @@
 /*
  * drivers/misc/tegra-profiler/auth.c
  *
- * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2016, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -129,7 +129,8 @@ auth_read(struct file *filp,
 	((u32 *)buf)[2] = QUADD_SECURITY_REQUEST_CMD_TEST_DEBUG_FLAG;
 	((u32 *)buf)[3] = strlen(data->package_name);
 
-	strcpy(buf + 4 * sizeof(u32), data->package_name);
+	strlcpy(buf + 4 * sizeof(u32), data->package_name,
+		QUADD_MAX_PACKAGE_NAME);
 	msg_length = strlen(data->package_name) + 4 * sizeof(u32);
 
 	mutex_unlock(&auth_ctx.lock);
@@ -256,7 +257,7 @@ int quadd_auth_is_debuggable(const char *package_name)
 	data->debug_app_uid = 0;
 	data->response_value = 0;
 
-	strncpy(data->package_name, package_name, QUADD_MAX_PACKAGE_NAME);
+	strlcpy(data->package_name, package_name, QUADD_MAX_PACKAGE_NAME);
 	mutex_unlock(&auth_ctx.lock);
 
 	request_ready();
