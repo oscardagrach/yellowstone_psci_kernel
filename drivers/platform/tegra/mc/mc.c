@@ -127,6 +127,7 @@ int mc_get_carveout_info(struct mc_carveout_info *inf, int *nr,
 
 	return 0;
 }
+EXPORT_SYMBOL(mc_get_carveout_info);
 
 #ifdef CONFIG_PM_SLEEP
 static u32 mc_boot_timing[MC_TIMING_REG_NUM1 + MC_TIMING_REG_NUM2
