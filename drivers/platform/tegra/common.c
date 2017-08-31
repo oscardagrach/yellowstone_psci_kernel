@@ -280,6 +280,7 @@ retry:
 struct dma_resize_notifier_ops vpr_dev_ops = {
 	.resize = tegra_update_resize_cfg
 };
+EXPORT_SYMBOL(vpr_dev_ops);
 
 u32 notrace tegra_read_cycle(void)
 {
