@@ -4196,7 +4196,7 @@ wl_cfg80211_connect(struct wiphy *wiphy, struct net_device *dev,
 	u32 wpaie_len = 0;
 	u32 chan_cnt = 0;
 	struct ether_addr bssid;
-	s32 bssidx;
+	s32 bssidx = -1;
 	int ret;
 	int wait_cnt;
 
@@ -4215,7 +4215,7 @@ wl_cfg80211_connect(struct wiphy *wiphy, struct net_device *dev,
 
 	WL_DBG(("SME IE : len=%zu\n", sme->ie_len));
 	if (sme->ie != NULL && sme->ie_len > 0 && (wl_dbg_level & WL_DBG_DBG)) {
-		prhex(NULL, sme->ie, sme->ie_len);
+		prhex(NULL, (uchar *)sme->ie, sme->ie_len);
 	}
 
 	RETURN_EIO_IF_NOT_UP(cfg);
@@ -4365,8 +4365,10 @@ wl_cfg80211_connect(struct wiphy *wiphy, struct net_device *dev,
 		chan_cnt = 1;
 		WL_DBG(("channel (%d), center_req (%d), %d channels\n", cfg->channel,
 			chan->center_freq, chan_cnt));
-	} else
+	} else {
+		WL_DBG(("No channel info from user space\n"));
 		cfg->channel = 0;
+	}
 	WL_DBG(("ie (%p), ie_len (%zd)\n", sme->ie, sme->ie_len));
 	WL_DBG(("3. set wapi version \n"));
 	err = wl_set_wpa_version(dev, sme);
@@ -4430,7 +4432,10 @@ wl_cfg80211_connect(struct wiphy *wiphy, struct net_device *dev,
 	else
 		memcpy(&ext_join_params->assoc.bssid, &ether_bcast, ETH_ALEN);
 	ext_join_params->assoc.chanspec_num = chan_cnt;
-	if (chan_cnt) {
+	if ((chan_cnt) && (cfg->channel)) {
+		/*
+		 * Use the channel provided by userspace
+		 */
 		u16 channel, band, bw, ctl_sb;
 		chanspec_t chspec;
 		channel = cfg->channel;
@@ -9333,18 +9338,18 @@ wl_notify_connect_status(struct bcm_cfg80211 *cfg, bcm_struct_cfgdev *cfgdev,
 				if (memcmp(curbssid, &e->addr, ETHER_ADDR_LEN) != 0) {
 					bool fw_assoc_state = TRUE;
 					dhd_pub_t *dhd = (dhd_pub_t *)cfg->pub;
-					fw_assoc_state = dhd_is_associated(dhd, e->ifidx, &err);
+					fw_assoc_state = dhd_is_associated(dhd, 0, &err);
 					if (!fw_assoc_state) {
 						WL_ERR(("Event sends up even different BSSID"
-							" cur: " MACDBG " event: " MACDBG"\n",
+							" cur: " MACDBG " event: " MACDBG" e->ifidx:%d\n",
 							MAC2STRDBG(curbssid),
-							MAC2STRDBG((const u8 *)(&e->addr))));
+							MAC2STRDBG((const u8 *)(&e->addr)), e->ifidx));
 					} else {
 						WL_ERR(("BSSID of event is not the connected BSSID"
 							"(ignore it) cur: " MACDBG
-							" event: " MACDBG"\n",
+							" event: " MACDBG" e->ifidx:%d\n",
 							MAC2STRDBG(curbssid),
-							MAC2STRDBG((const u8 *)(&e->addr))));
+							MAC2STRDBG((const u8 *)(&e->addr)), e->ifidx));
 						return 0;
 					}
 				}
