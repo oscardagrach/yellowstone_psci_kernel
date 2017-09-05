@@ -353,8 +353,7 @@ static struct usb_request *mtp_request_new(struct mtp_dev *dev,
 		return NULL;
 
 	/* now allocate buffers for the requests */
-	req->buf = dma_alloc_coherent(dev->cdev->gadget->dev.parent,
-				 buffer_size, &req->dma, GFP_KERNEL);
+	req->buf = kmalloc(buffer_size, GFP_KERNEL);
 	if (!req->buf) {
 		usb_ep_free_request(ep, req);
 		return NULL;
@@ -367,8 +366,7 @@ static void mtp_request_free(struct mtp_dev *dev, struct usb_request *req,
 					struct usb_ep *ep, int buffer_size)
 {
 	if (req) {
-		dma_free_coherent(dev->cdev->gadget->dev.parent, buffer_size,
-							req->buf, req->dma);
+		kfree(req->buf);
 		usb_ep_free_request(ep, req);
 	}
 }
