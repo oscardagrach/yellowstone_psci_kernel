@@ -355,6 +355,8 @@ static struct usb_request *mtp_request_new(struct mtp_dev *dev,
 	/* now allocate buffers for the requests */
 	req->buf = kmalloc(buffer_size, GFP_KERNEL);
 	if (!req->buf) {
+		pr_err("mtp_request_new() could not allocate %d bytes buffer\n",
+					buffer_size);
 		usb_ep_free_request(ep, req);
 		return NULL;
 	}
