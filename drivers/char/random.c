@@ -256,10 +256,7 @@
 #include <linux/ptrace.h>
 #include <linux/kmemcheck.h>
 #include <linux/workqueue.h>
-
-#ifdef CONFIG_GENERIC_HARDIRQS
 # include <linux/irq.h>
-#endif
 
 #include <asm/processor.h>
 #include <asm/uaccess.h>
@@ -655,15 +652,12 @@ retry:
 		goto retry;
 
 	r->entropy_total += nbits;
-	if (!r->initialized && nbits > 0) {
-		if (r->entropy_total > 128) {
-			if (r == &nonblocking_pool)
-				pr_notice("random: %s pool is initialized\n",
-					  r->name);
-			r->initialized = 1;
-			r->entropy_total = 0;
-			if (r == &nonblocking_pool)
-				prandom_reseed_late();
+	if (!r->initialized && r->entropy_total > 128) {
+		r->initialized = 1;
+		r->entropy_total = 0;
+		if (r == &nonblocking_pool) {
+			prandom_reseed_late();
+			pr_notice("random: %s pool is initialized\n", r->name);
 		}
 	}
 
