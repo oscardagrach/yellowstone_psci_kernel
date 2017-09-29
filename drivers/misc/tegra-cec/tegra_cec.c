@@ -97,6 +97,7 @@ static int tegra_cec_release(struct inode *inode, struct file *file)
 
 static inline void tegra_cec_native_tx(const struct tegra_cec *cec, u32 block)
 {
+	dev_dbg(cec->dev, "%s: %08x", __func__, block);
 	writel(block, cec->cec_base + TEGRA_CEC_TX_REGISTER);
 	writel(TEGRA_CEC_INT_STAT_TX_REGISTER_EMPTY,
 		cec->cec_base + TEGRA_CEC_INT_STAT);
@@ -243,6 +244,11 @@ static irqreturn_t tegra_cec_irq_handler(int irq, void *data)
 		goto out;
 	} else if ((status & TEGRA_CEC_INT_STAT_TX_ARBITRATION_FAILED) ||
 		   (status & TEGRA_CEC_INT_STAT_TX_BUS_ANOMALY_DETECTED)) {
+		if (status & TEGRA_CEC_INT_STAT_TX_ARBITRATION_FAILED)
+			dev_warn(dev, "TX arbitration failure!\n");
+		else
+			dev_warn(dev, "TX bus anomaly detected!\n");
+
 		tegra_cec_error_recovery(cec);
 		writel(mask & ~TEGRA_CEC_INT_MASK_TX_REGISTER_EMPTY,
 			cec->cec_base + TEGRA_CEC_INT_MASK);
@@ -258,6 +264,7 @@ static irqreturn_t tegra_cec_irq_handler(int irq, void *data)
 			cec->cec_base + TEGRA_CEC_INT_STAT);
 
 		if (status & TEGRA_CEC_INT_STAT_TX_FRAME_OR_BLOCK_NAKD) {
+			dev_warn(dev, "TX frame or block NAKed!\n");
 			tegra_cec_error_recovery(cec);
 
 			cec->tx_error = TEGRA_CEC_LADDR_MODE(cec->tx_buf[0]) ?
