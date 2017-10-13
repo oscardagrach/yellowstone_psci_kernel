@@ -781,7 +781,7 @@ struct tegra_dc_ext_feature {
 	_IOW('D', 0x1D, struct tegra_dc_ext_flip_4)
 
 #define TEGRA_DC_EXT_GET_CAP_INFO\
-	_IOW('D', 0x1E, struct tegra_dc_ext_get_cap_info)
+	_IOW('D', 0x23, struct tegra_dc_ext_get_cap_info)
 
 enum tegra_dc_ext_control_output_type {
 	TEGRA_DC_EXT_DSI,
