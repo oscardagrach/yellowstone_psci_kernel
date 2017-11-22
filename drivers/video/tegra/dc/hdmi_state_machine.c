@@ -210,6 +210,9 @@ static void hdmi_disable_l(struct tegra_dc_hdmi_data *hdmi)
 	if (was_connected) {
 		pr_info("HDMI from connected to disconnected\n");
 		tegra_dc_disable(hdmi->dc);
+#ifdef CONFIG_TEGRA_DC_EXTENSIONS
+		tegra_dc_ext_process_hotplug(hdmi->dc->ndev->id);
+#endif
 	}
 	hdmi->dc->connected = false;
 	hdmi->connected_cache = false;
@@ -220,7 +223,7 @@ static void hdmi_disable_l(struct tegra_dc_hdmi_data *hdmi)
 #endif
 #ifdef CONFIG_TEGRA_DC_EXTENSIONS
 	if (was_connected)
-		tegra_dc_ext_process_hotplug(hdmi->dc->ndev->id, false);
+		tegra_dc_ext_process_hotplug(hdmi->dc->ndev->id);
 	else
 		pr_info("%s: skipping redundant disconnect\n", __func__);
 #endif
@@ -327,7 +330,7 @@ static void handle_check_edid_l(struct tegra_dc_hdmi_data *hdmi)
 	hdmi->connected_cache = true;
 
 #ifdef CONFIG_TEGRA_DC_EXTENSIONS
-	tegra_dc_ext_process_hotplug(hdmi->dc->ndev->id, true);
+	tegra_dc_ext_process_hotplug(hdmi->dc->ndev->id);
 #endif
 
 	if (unlikely(tegra_is_clk_enabled(hdmi->clk))) {

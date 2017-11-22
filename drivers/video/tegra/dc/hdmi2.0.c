@@ -535,7 +535,7 @@ static void tegra_hdmi_hotplug_notify(struct tegra_hdmi *hdmi,
 #endif
 
 	dc->connected = is_asserted;
-	tegra_dc_ext_process_hotplug(dc->ndev->id, is_asserted);
+	tegra_dc_ext_process_hotplug(dc->ndev->id);
 
 #ifdef CONFIG_SWITCH
 	switch_set_state(&hdmi->hpd_switch, is_asserted ? 1 : 0);
@@ -607,7 +607,7 @@ static int tegra_hdmi_disable(struct tegra_hdmi *hdmi)
 
 	if (!hdmi->enabled) {
 		dc->connected = false;
-		tegra_dc_ext_process_hotplug(dc->ndev->id, false);
+		tegra_dc_ext_process_hotplug(dc->ndev->id);
 #ifdef CONFIG_SWITCH
 		switch_set_state(&hdmi->hpd_switch, 0);
 #endif
