@@ -576,6 +576,15 @@ fail:
 	return err;
 }
 
+static void tegra_hdmi_hdcp_set_plug(struct tegra_hdmi *hdmi, bool hpd)
+{
+	/* if vedid is set, then don't call hdcp */
+	if (hdmi->dc->vedid)
+		return;
+
+	tegra_nvhdcp_set_plug(hdmi->nvhdcp, hpd);
+}
+
 static int tegra_hdmi_controller_disable(struct tegra_hdmi *hdmi)
 {
 	struct tegra_dc_sor_data *sor = hdmi->sor;
@@ -589,7 +598,7 @@ static int tegra_hdmi_controller_disable(struct tegra_hdmi *hdmi)
 		tegra_hdmi_v2_x_host_config(hdmi, false);
 	}
 
-	tegra_nvhdcp_set_plug(hdmi->nvhdcp, 0);
+	tegra_hdmi_hdcp_set_plug(hdmi, 0);
 	tegra_dc_sor_detach(sor);
 	tegra_sor_power_lanes(sor, 4, false);
 	tegra_sor_hdmi_pad_power_down(sor);
@@ -723,10 +732,8 @@ static void tegra_hdmi_hpd_worker(struct work_struct *work)
 				goto fail;
 			} else {
 				if (match) {
-					tegra_nvhdcp_set_plug(hdmi->nvhdcp,
-						false);
-					tegra_nvhdcp_set_plug(hdmi->nvhdcp,
-						true);
+					tegra_hdmi_hdcp_set_plug(hdmi, false);
+					tegra_hdmi_hdcp_set_plug(hdmi, true);
 					dev_info(&hdmi->dc->ndev->dev, "hdmi: No EDID change after HPD bounce, taking no action.\n");
 					goto fail;
 				} else {
@@ -1909,7 +1916,7 @@ static int tegra_hdmi_controller_enable(struct tegra_hdmi *hdmi)
 
 	tegra_hdmi_config_clk(hdmi, TEGRA_HDMI_BRICK_CLK);
 	tegra_dc_sor_attach(sor);
-	tegra_nvhdcp_set_plug(hdmi->nvhdcp, true);
+	tegra_hdmi_hdcp_set_plug(hdmi, true);
 
 	tegra_dc_setup_clk(dc, dc->clk);
 	tegra_dc_hdmi_setup_clk(dc, hdmi->sor->sor_clk);
