@@ -2,7 +2,7 @@
  * Gadget Function Driver for Android USB accessories
  *
  * Copyright (C) 2011 Google, Inc.
- * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2017, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author: Mike Lockwood <lockwood@android.com>
  *
@@ -322,6 +322,8 @@ static void acc_complete_set_string(struct usb_ep *ep, struct usb_request *req)
 
 		if (length >= ACC_STRING_SIZE)
 			length = ACC_STRING_SIZE - 1;
+		if (length == 0)
+			return;
 
 		spin_lock_irqsave(&dev->lock, flags);
 		memcpy(string_dest, req->buf, length);
