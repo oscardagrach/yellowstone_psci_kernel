@@ -1400,17 +1400,24 @@ u32 gk20a_fifo_get_failing_engine_data(struct gk20a *g,
 		if (ctx_status ==
 				fifo_engine_status_ctx_status_ctxsw_load_v()) {
 			id = fifo_engine_status_next_id_v(status);
-			is_tsg = fifo_pbdma_status_id_type_v(status)
-				!= fifo_pbdma_status_id_type_chid_v();
+			is_tsg = fifo_engine_status_next_id_type_v(status) !=
+				fifo_engine_status_next_id_type_chid_v();
 		} else if (ctx_status ==
 			       fifo_engine_status_ctx_status_ctxsw_switch_v()) {
 			mailbox2 = gk20a_readl(g, gr_fecs_ctxsw_mailbox_r(2));
-			if (mailbox2 & FECS_METHOD_WFI_RESTORE)
+			if (mailbox2 & FECS_METHOD_WFI_RESTORE) {
 				id = fifo_engine_status_next_id_v(status);
-			else
+				is_tsg = fifo_engine_status_next_id_type_v(status) !=
+					fifo_engine_status_next_id_type_chid_v();
+			} else {
 				id = fifo_engine_status_id_v(status);
+				is_tsg = fifo_engine_status_id_type_v(status) !=
+					fifo_engine_status_id_type_chid_v();
+			}
 		} else {
 			id = fifo_engine_status_id_v(status);
+			is_tsg = fifo_engine_status_id_type_v(status) !=
+				fifo_engine_status_id_type_chid_v();
 		}
 		break;
 	}
