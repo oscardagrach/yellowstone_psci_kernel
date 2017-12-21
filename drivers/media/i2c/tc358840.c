@@ -45,6 +45,7 @@
 
 #include <media/i2c/tc358840.h>
 #include "tc358840_regs.h"
+#include <asm/barrier.h>
 
 
 static int debug;
@@ -1953,6 +1954,8 @@ static int tc358840_enum_framesizes(struct v4l2_subdev *sd,
 	if (fsizes->index >= num_frmfmt)
 		return -EINVAL;
 
+	speculation_barrier();
+
 	fsizes->type = V4L2_FRMSIZE_TYPE_DISCRETE;
 	fsizes->discrete = frmfmt[fsizes->index].size;
 
@@ -1982,6 +1985,8 @@ static int tc358840_enum_frameintervals(struct v4l2_subdev *sd,
 
 	if (fintervals->index >= frmfmt[i].num_framerates)
 		return -EINVAL;
+
+	speculation_barrier();
 
 	fintervals->type = V4L2_FRMSIZE_TYPE_DISCRETE;
 	fintervals->discrete.numerator = 1;

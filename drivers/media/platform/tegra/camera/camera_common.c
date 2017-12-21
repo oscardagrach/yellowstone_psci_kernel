@@ -20,6 +20,7 @@
 #include <linux/of_graph.h>
 #include <linux/string.h>
 #include <mach/io_dpd.h>
+#include <asm/barrier.h>
 
 #define has_s_op(master, op) \
 	(master->ops && master->ops->op)
@@ -541,6 +542,8 @@ int camera_common_enum_framesizes(struct v4l2_subdev *sd,
 	if (ret)
 		return ret;
 
+	speculation_barrier();
+
 	fsizes->type = V4L2_FRMSIZE_TYPE_DISCRETE;
 	fsizes->discrete = s_data->frmfmt[fsizes->index].size;
 
@@ -575,6 +578,8 @@ int camera_common_enum_frameintervals(struct v4l2_subdev *sd,
 	/* Check index is in the rage of framerates array index */
 	if (fintervals->index >= s_data->frmfmt[i].num_framerates)
 		return -EINVAL;
+
+	speculation_barrier();
 
 	fintervals->type = V4L2_FRMSIZE_TYPE_DISCRETE;
 	fintervals->discrete.numerator = 1;
