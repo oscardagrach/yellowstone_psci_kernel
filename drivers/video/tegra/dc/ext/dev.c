@@ -2078,7 +2078,7 @@ static long tegra_dc_ioctl(struct file *filp, unsigned int cmd,
 	{
 		int ret;
 		int win_num;
-		struct tegra_dc_ext_flip_3 args;
+		struct tegra_dc_ext_flip_4 args;
 		struct tegra_dc_ext_flip_windowattr *win;
 
 		if (copy_from_user(&args, user_arg, sizeof(args)))
