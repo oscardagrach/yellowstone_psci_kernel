@@ -413,11 +413,11 @@ exit:
 int mmc_ffu_download(struct mmc_card *card, const char *name)
 {
 	u8 ext_csd[CARD_BLOCK_SIZE];
-	int err;
-	int ret;
+	int err, ret;
 	u32 arg;
 	u32 fw_prog_bytes;
 	const struct firmware *fw;
+	bool mode_ops_sup;
 
 	/* Check if FFU is supported */
 	if (!card->ext_csd.ffu_capable) {
@@ -453,7 +453,7 @@ int mmc_ffu_download(struct mmc_card *card, const char *name)
 	if (err) {
 		pr_err("FFU: %s: error %d FFU is not supported\n",
 			mmc_hostname(card->host), err);
-		goto exit;
+		goto out;
 	}
 
 	/* Read the EXT_CSD */
@@ -474,15 +474,6 @@ int mmc_ffu_download(struct mmc_card *card, const char *name)
 	if (err) {
 		pr_err("FFU: %s: error %d write switching to normal\n",
 			mmc_hostname(card->host), err);
-	}
-
-	/* host switch back to work in normal MMC Read/Write commands */
-	ret = mmc_switch(card, EXT_CSD_CMD_SET_NORMAL,
-		EXT_CSD_MODE_CONFIG, MMC_FFU_MODE_NORMAL,
-		card->ext_csd.generic_cmd6_time);
-	if (ret) {
-		if (!err)
-			err = ret;
 		goto exit;
 	}
 
@@ -508,9 +499,38 @@ int mmc_ffu_download(struct mmc_card *card, const char *name)
 		err = -EINVAL;
 		pr_err("FFU: %s: error %d number of programmed fw sector incorrect %d %zd\n",
 				__func__, err, fw_prog_bytes, fw->size);
+		goto exit;
 	}
 
+	/* Check for MODE_OPERATION_CODES support*/
+	mode_ops_sup = FFU_FEATURES(ext_csd[EXT_CSD_FFU_FEATURES]);
+
+	/* host switch back to work in normal MMC Read/Write commands */
+	err = mmc_switch(card, EXT_CSD_CMD_SET_NORMAL,
+		EXT_CSD_MODE_CONFIG, MMC_FFU_MODE_NORMAL,
+		card->ext_csd.generic_cmd6_time);
+	if (err) {
+		pr_err("FFU: %s: Failed switching to normal mode prior to FFU install %d\n",
+				mmc_hostname(card->host), err);
+		goto exit;
+	}
+
+	err = mmc_ffu_install(card);
+	if (err)
+		pr_err("FFU: %s: error firmware install %d\n",
+				mmc_hostname(card->host), err);
+	if (!mode_ops_sup)
+		goto out;
+
 exit:
+	ret = mmc_switch(card, EXT_CSD_CMD_SET_NORMAL,
+		EXT_CSD_MODE_CONFIG, MMC_FFU_MODE_NORMAL,
+		card->ext_csd.generic_cmd6_time);
+	if (ret)
+		pr_err("Failed switching to normal mode post FFU install %d\n",
+		        ret);
+
+out:
 	release_firmware(fw);
 	mmc_release_host(card->host);
 	return err;
