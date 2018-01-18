@@ -438,10 +438,12 @@ static void advance_itstate(struct pt_regs *regs)
 
 asmlinkage void __exception do_sysinstr(unsigned int esr, struct pt_regs *regs)
 {
-	if ((esr & ESR_ELx_SYS64_ISS_SYS_OP_MASK) == ESR_ELx_SYS64_ISS_SYS_CNTVCT) {
+	if ((esr >> ESR_EL1_EC_SHIFT) == ESR_EL1_EC_SYS64 &&
+	    (esr & ESR_ELx_SYS64_ISS_SYS_OP_MASK) == ESR_ELx_SYS64_ISS_SYS_CNTVCT) {
 		cntvct_read_handler(esr, regs);
 		return;
-	} else if ((esr & ESR_ELx_SYS64_ISS_SYS_OP_MASK) == ESR_ELx_SYS64_ISS_SYS_CNTFRQ) {
+	} else if ((esr >> ESR_EL1_EC_SHIFT) == ESR_EL1_EC_SYS64 &&
+	           (esr & ESR_ELx_SYS64_ISS_SYS_OP_MASK) == ESR_ELx_SYS64_ISS_SYS_CNTFRQ) {
 		cntfrq_read_handler(esr, regs);
 		return;
 	}
