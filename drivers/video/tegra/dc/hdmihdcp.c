@@ -1,7 +1,7 @@
 /*
  * drivers/video/tegra/dc/hdmihdcp.c
  *
- * Copyright (c) 2014-2017, NVIDIA CORPORATION, All rights reserved.
+ * Copyright (c) 2014-2018, NVIDIA CORPORATION, All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -1987,6 +1987,11 @@ static long nvhdcp_dev_ioctl(struct file *filp,
 	struct tegra_nvhdcp *nvhdcp = filp->private_data;
 	struct tegra_nvhdcp_packet *pkt;
 	int e = -ENOTTY;
+
+	if (nvhdcp->hdmi->dc->vedid) {
+		nvhdcp_err("vedid active\n");
+		return -EIO;
+	}
 
 	switch (cmd) {
 	case TEGRAIO_NVHDCP_ON:
