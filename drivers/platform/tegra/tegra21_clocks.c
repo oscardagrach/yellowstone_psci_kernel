@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra21_clocks.c
  *
- * Copyright (C) 2013-2017 NVIDIA Corporation. All rights reserved.
+ * Copyright (C) 2013-2018, NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -279,7 +279,7 @@
 
 #define PLLD2_MISC0_DEFAULT_VALUE	0x40000020
 #define PLLD2_MISC1_CFG_DEFAULT_VALUE	0x10000000
-#define PLLD2_MISC2_CTRL1_DEFAULT_VALUE	0xF800F760
+#define PLLD2_MISC2_CTRL1_DEFAULT_VALUE	0xF6E0F620
 #define PLLD2_MISC3_CTRL2_DEFAULT_VALUE	0x00010000
 #define PLLD2_MISC3_CTRL2_SDM_SSC_STEP_WRITE_MASK	0xffff0000
 
