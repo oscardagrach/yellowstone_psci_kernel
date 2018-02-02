@@ -1164,6 +1164,15 @@ static void tegra_dc_ext_read_user_data(struct tegra_dc_ext_flip_data *data,
 					sizeof(hdr->static_metadata));
 			}
 			break;
+		case TEGRA_DC_EXT_FLIP_USER_DATA_IMP_DATA:
+		case TEGRA_DC_EXT_FLIP_USER_DATA_IMP_TAG:
+		case TEGRA_DC_EXT_FLIP_USER_DATA_POST_SYNCPT:
+		case TEGRA_DC_EXT_FLIP_USER_DATA_NVDISP_WIN_CSC:
+		case TEGRA_DC_EXT_FLIP_USER_DATA_NVDISP_CMU:
+		case TEGRA_DC_EXT_FLIP_USER_DATA_OUTPUT_CSC:
+		case TEGRA_DC_EXT_FLIP_USER_DATA_GET_FLIP_INFO:
+		case TEGRA_DC_EXT_FLIP_USER_DATA_BACKGROUND_COLOR:
+			break;
 		default:
 			dev_err(&data->ext->dc->ndev->dev,
 				"Invalid FLIP_USER_DATA_TYPE\n");
