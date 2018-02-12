@@ -144,6 +144,9 @@ errout:
 static void stop(void)
 {
 	if (atomic_cmpxchg(&ctx.started, 1, 0)) {
+		quadd_hrt_stop();
+		quadd_power_clk_stop();
+
 		preempt_disable();
 
 		ctx.comm->reset();
@@ -158,9 +161,6 @@ static void stop(void)
 		tegra_profiler_unlock();
 
 		preempt_enable();
-
-		quadd_hrt_stop();
-		quadd_power_clk_stop();
 	}
 }
 
