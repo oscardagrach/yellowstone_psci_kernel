@@ -732,8 +732,10 @@ static void tegra_hdmi_hpd_worker(struct work_struct *work)
 				goto fail;
 			} else {
 				if (match) {
-					tegra_hdmi_hdcp_set_plug(hdmi, false);
-					tegra_hdmi_hdcp_set_plug(hdmi, true);
+					if (hdmi->enabled) {
+						tegra_hdmi_hdcp_set_plug(hdmi, false);
+						tegra_hdmi_hdcp_set_plug(hdmi, true);
+					}
 					dev_info(&hdmi->dc->ndev->dev, "hdmi: No EDID change after HPD bounce, taking no action.\n");
 					goto fail;
 				} else {
