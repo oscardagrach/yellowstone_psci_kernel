@@ -262,6 +262,9 @@ static struct {
 
 static DEFINE_SPINLOCK(emc_access_lock);
 
+/* Protected via emc_access_lock */
+static bool emc_timer_stop_intent = false;
+
 void emc_writel(u32 val, unsigned long addr)
 {
 	emc_cc_dbg(REGS, "reg write 0x%08x => 0x%p\n", val, emc_base + addr);
@@ -521,6 +524,7 @@ void ccfifo_writel(u32 val, unsigned long addr, u32 delay)
 u32 emc_do_periodic_compensation(void)
 {
 	int ret = 0;
+	unsigned long flags = 0;
 
 	/*
 	 * Possible early in the boot. If this happens, return -EAGAIN and let
@@ -529,10 +533,14 @@ u32 emc_do_periodic_compensation(void)
 	if (!emc_timing)
 		return -EAGAIN;
 
-	spin_lock(&emc_access_lock);
+	while (spin_trylock_irqsave(&emc_access_lock, flags) == 0) {
+		if (emc_timer_stop_intent)
+			return -EAGAIN;
+	}
+
 	if (seq->periodic_compensation)
 		ret = seq->periodic_compensation(emc_timing);
-	spin_unlock(&emc_access_lock);
+	spin_unlock_irqrestore(&emc_access_lock, flags);
 
 	return ret;
 }
@@ -547,10 +555,13 @@ static void emc_set_clock(struct tegra21_emc_table *next_timing,
 	current_clksrc = clksrc;
 	seq->set_clock(next_timing, last_timing, training, clksrc);
 
-	if (next_timing->periodic_training)
+	if (next_timing->periodic_training) {
 		tegra_emc_timer_training_start();
-	else
+	} else {
+		emc_timer_stop_intent = true;
 		tegra_emc_timer_training_stop();
+		emc_timer_stop_intent = false;
+	}
 
 	/* EMC freq dependent MR4 polling. */
 	tegra_emc_mr4_freq_check(next_timing->rate);
