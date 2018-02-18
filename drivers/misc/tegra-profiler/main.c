@@ -569,8 +569,11 @@ get_capabilities(struct quadd_comm_cap *cap)
 	extra |= QUADD_COMM_CAP_EXTRA_RB_MMAP_OP;
 	extra |= QUADD_COMM_CAP_EXTRA_CPU_MASK;
 
-	if (ctx.hrt->tc)
+	if (ctx.hrt->tc) {
 		extra |= QUADD_COMM_CAP_EXTRA_ARCH_TIMER;
+		if (ctx.hrt->arch_timer_user_access)
+			extra |= QUADD_COMM_CAP_EXTRA_ARCH_TIMER_USR;
+	}
 
 	cap->reserved[QUADD_COMM_CAP_IDX_EXTRA] = extra;
 	cap->reserved[QUADD_COMM_CAP_IDX_CPU_MASK] = get_possible_cpu();
