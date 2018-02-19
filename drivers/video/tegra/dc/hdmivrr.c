@@ -1,7 +1,7 @@
 /*
  * drivers/video/tegra/dc/hdmivrr.c
  *
- * Copyright (c) 2015-2016, NVIDIA CORPORATION, All rights reserved.
+ * Copyright (c) 2015-2018, NVIDIA CORPORATION, All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -43,6 +43,7 @@
 #include "hdmi_reg.h"
 #include "hdmivrr.h"
 
+#define VRR_AUTH_UUID	{0x0179ED96, 0x45A81ADB, 0x089DC68D, 0xBB520279}
 #define HDMIVRR_POLL_MS 50
 #define HDMIVRR_POLL_TIMEOUT_MS 1000
 
@@ -50,6 +51,8 @@
 #define HDMIVRR_CHLNG_SRC_DRV 1
 
 #define NS_IN_MS (1000 * 1000)
+
+struct tegra_vrr *vrr_buf;
 
 static int hdmivrr_i2c_read(struct tegra_hdmi *hdmi, size_t len, void *data)
 {
@@ -374,6 +377,66 @@ static int hdmivrr_dpcd_write_u32(struct tegra_hdmi *hdmi, u32 reg, u32 val)
 	return status;
 }
 
+#ifdef CONFIG_TRUSTED_LITTLE_KERNEL
+void hdmivrr_te_service_commands(u32 ta_cmd, u32 session_id)
+{
+	int status;
+	u32 vrr_auth_uuid[4] = VRR_AUTH_UUID;
+	u32 uuid_size = sizeof(vrr_auth_uuid);
+
+	status = te_launch_trusted_oper((u64 *)vrr_buf, PAGE_SIZE, session_id,
+					vrr_auth_uuid, ta_cmd, uuid_size);
+	if (status)
+		pr_err("VRR: Failed to launch operation, err = %d\n", status);
+
+}
+
+/* Open the  tz session for vrr service */
+int hdmivrr_te_init(u32 *session_id)
+{
+	int status;
+	u32 vrr_auth_uuid[4] = VRR_AUTH_UUID;
+	u32 uuid_size = sizeof(vrr_auth_uuid);
+
+	status = te_open_trusted_session(vrr_auth_uuid, uuid_size, session_id);
+
+	if (status)
+		pr_err("VRR: Failed to open session, err = %d\n", status);
+
+	return status;
+}
+
+/* Close the tz session which was created for vrr */
+void hdmivrr_te_deinit(s32 session_id)
+{
+	u32 vrr_auth_uuid[4] = VRR_AUTH_UUID;
+	u32 uuid_size = sizeof(vrr_auth_uuid);
+
+	te_close_trusted_session(session_id, vrr_auth_uuid, uuid_size);
+}
+
+void tegra_hdmivrr_te_vrr_auth(struct tegra_vrr *vrr)
+{
+	hdmivrr_te_service_commands(CMD_VRR_AUTH, vrr->vrr_session_id);
+}
+
+void tegra_hdmivrr_te_vrr_sec(struct tegra_vrr *vrr)
+{
+	hdmivrr_te_service_commands(CMD_VRR_SEC, vrr->vrr_session_id);
+}
+#endif
+
+/*
+ * Called from the DC driver to set VRR buffer. This call sets the address
+ * for the shared memory buffer between kernel & TZ.vrr->vrr_cmd = CMD_VRR_SEC
+ */
+int tegra_hdmivrr_te_set_buf(void *addr)
+{
+	/* This address is mapped in kernel space */
+	vrr_buf = addr;
+	return 0;
+}
+
 static int tegra_hdmivrr_is_vrr_capable(struct tegra_hdmi *hdmi)
 {
 	int status;
@@ -482,7 +545,7 @@ static void tegra_hdmivrr_mac(struct tegra_hdmi *hdmi, struct tegra_vrr *vrr)
 {
 
 #ifdef CONFIG_TRUSTED_LITTLE_KERNEL
-	te_authenticate_vrr((u8 *)&vrr->keynum, 75);
+	tegra_hdmivrr_te_vrr_auth(vrr);
 #endif
 
 }
@@ -704,7 +767,6 @@ static bool tegra_hdmivrr_fb_mode_is_compatible(struct tegra_hdmi *hdmi,
 	 *
 	 * Note fb_mode_is_equal() doesn't check for pixclock;
 	 * use fb_mode_is_equal_tolerance() for that purpose */
-	BUG_ON(tegra_hdmi_get_cea_modedb_size(hdmi) <= 16);
 
 	m_tmp = *m;
 	m_tmp.vmode &= cea_modes[16].vmode;
@@ -805,6 +867,18 @@ int tegra_hdmivrr_setup(struct tegra_hdmi *hdmi)
 	if (status)
 		goto fail;
 
+#ifdef CONFIG_TRUSTED_LITTLE_KERNEL
+	/* Let the session id live through out to save time and
+	 * kill it when TV is unplugged.
+	 */
+	if (!(vrr->vrr_session_id)) {
+		status = hdmivrr_te_init(&(vrr->vrr_session_id));
+
+		if (status)
+			goto fail;
+	}
+#endif
+
 	status = tegra_hdmivrr_page_init(hdmi);
 	if (status)
 		goto fail;
@@ -821,3 +895,22 @@ exit:
 	return status;
 }
 
+int tegra_hdmivrr_disable(struct tegra_hdmi *hdmi)
+{
+	struct tegra_dc *dc;
+	struct tegra_vrr *vrr;
+
+	if (!hdmi || !hdmi->dc || !hdmi->dc->out || !hdmi->dc->out->vrr)
+		return -EINVAL;
+
+	dc = hdmi->dc;
+	vrr = dc->out->vrr;
+
+#ifdef CONFIG_TRUSTED_LITTLE_KERNEL
+	if (vrr->vrr_session_id) {
+		hdmivrr_te_deinit(vrr->vrr_session_id);
+		vrr->vrr_session_id = 0;
+	}
+#endif
+	return 0;
+}

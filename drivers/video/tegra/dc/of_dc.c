@@ -1,7 +1,7 @@
 /*
  * drivers/video/tegra/dc/of_dc.c
  *
- * Copyright (c) 2013-2017, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2018, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -63,6 +63,7 @@
 #include "dsi.h"
 #include "edid.h"
 #include "hdmi2.0.h"
+#include "hdmivrr.h"
 
 #ifdef CONFIG_OF
 /* #define OF_DC_DEBUG	1 */
@@ -2200,6 +2201,10 @@ struct tegra_dc_platform_data
 	u32 temp;
 	const char *dc_or_node;
 
+#ifdef CONFIG_TRUSTED_LITTLE_KERNEL
+	int check_val;
+#endif
+
 	/*
 	 * Memory for pdata, pdata->default_out, pdata->fb
 	 * need to be allocated in default
@@ -2500,7 +2505,7 @@ struct tegra_dc_platform_data
 #ifdef CONFIG_TRUSTED_LITTLE_KERNEL
 			int retval;
 
-			retval = te_vrr_set_buf(virt_to_phys(vrr));
+			retval = tegra_hdmivrr_te_set_buf(vrr);
 			if (retval) {
 				dev_err(&ndev->dev, "failed to set buffer\n");
 				goto fail_parse;
@@ -2530,6 +2535,14 @@ struct tegra_dc_platform_data
 				goto fail_parse;
 			}
 			OF_DC_LOG("nvidia,hdmi-vrr-caps: %d\n", temp);
+#ifdef CONFIG_TRUSTED_LITTLE_KERNEL
+			check_val = tegra_hdmivrr_te_set_buf(
+						pdata->default_out->vrr);
+			if (check_val) {
+				dev_err(&ndev->dev, "failed to set buffer\n");
+				goto fail_parse;
+			}
+#endif /* CONFIG_TRUSTED_LITTLE_KERNEL */
 		}
 	} else
 		pr_info("%s: nvidia,hdmi-vrr-caps not present\n", __func__);

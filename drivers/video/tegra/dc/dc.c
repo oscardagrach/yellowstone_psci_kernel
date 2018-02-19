@@ -4,7 +4,7 @@
  * Copyright (C) 2010 Google, Inc.
  * Author: Erik Gilling <konkers@android.com>
  *
- * Copyright (c) 2010-2017, NVIDIA CORPORATION, All rights reserved.
+ * Copyright (c) 2010-2018, NVIDIA CORPORATION, All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -3283,7 +3283,7 @@ static void tegra_dc_vrr_sec(struct tegra_dc *dc)
 	}
 
 #ifdef CONFIG_TRUSTED_LITTLE_KERNEL
-	te_vrr_sec();
+	tegra_hdmivrr_te_vrr_sec(vrr);
 #endif
 	/* Increment frame end interrupt refcount requested
 	   by secure library */

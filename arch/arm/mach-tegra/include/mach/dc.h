@@ -6,7 +6,7 @@
  * Author:
  *	Erik Gilling <konkers@google.com>
  *
- * Copyright (c) 2010-2017, NVIDIA CORPORATION, All rights reserved.
+ * Copyright (c) 2010-2018, NVIDIA CORPORATION, All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -672,9 +672,12 @@ struct tegra_vrr {
 	s32	frame2flip_us;
 	s32	adjust_vfp;
 	s32     adjust_db;
-	u32 db_correct_cap;
-	u32 db_hist_cap;
+	u32	db_correct_cap;
+	u32	db_hist_cap;
 	s32     vfp;
+	s32	insert_frame;
+	s32	vrr_session_id;
+	s32	nvdisp_direct_drive;
 
 	/* Must be kept in order */
 	u8	keynum;
@@ -1095,6 +1098,11 @@ unsigned tegra_dc_get_out_max_pixclock(const struct tegra_dc *dc);
 
 void nvsd_enbl_dsbl_prism(struct device *dev, bool status);
 void nvsd_check_prism_thresh(struct device *dev, int brightness);
+
+#ifdef CONFIG_TRUSTED_LITTLE_KERNEL
+void tegra_hdmivrr_te_vrr_sec(struct tegra_vrr *vrr);
+void tegra_hdmivrr_te_vrr_auth(struct tegra_vrr *vrr);
+#endif
 
 /* PM0 and PM1 signal control */
 #define TEGRA_PWM_PM0 0
