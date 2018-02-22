@@ -264,7 +264,7 @@ static irqreturn_t tegra_cec_irq_handler(int irq, void *data)
 			cec->cec_base + TEGRA_CEC_INT_STAT);
 
 		if (status & TEGRA_CEC_INT_STAT_TX_FRAME_OR_BLOCK_NAKD) {
-			dev_warn(dev, "TX frame or block NAKed!\n");
+			dev_dbg(dev, "TX frame or block NAKed!\n");
 			tegra_cec_error_recovery(cec);
 
 			cec->tx_error = TEGRA_CEC_LADDR_MODE(cec->tx_buf[0]) ?
