@@ -578,10 +578,6 @@ fail:
 
 static void tegra_hdmi_hdcp_set_plug(struct tegra_hdmi *hdmi, bool hpd)
 {
-	/* if vedid is set, then don't call hdcp */
-	if (hdmi->dc->vedid)
-		return;
-
 	tegra_nvhdcp_set_plug(hdmi->nvhdcp, hpd);
 }
 
