@@ -700,6 +700,7 @@ struct tegra_dc_out {
 	int				hotplug_gpio;
 	int				hotplug_state; /* 0 normal 1 force on */
 	int				prev_hotplug_state;
+	int				vrr_hotplug_state;
 	const char			*parent_clk;
 	const char			*parent_clk_backup;
 

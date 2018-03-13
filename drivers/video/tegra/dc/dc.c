@@ -2111,6 +2111,30 @@ void tegra_dc_enable_general_act(struct tegra_dc *dc)
 			"dc timeout waiting for DC to stop\n");
 }
 
+void tegra_dc_disable_disp_ctrl_mode(struct tegra_dc *dc)
+{
+	tegra_dc_get(dc);
+
+	tegra_dc_writel(dc, DISP_CTRL_MODE_STOP, DC_CMD_DISPLAY_COMMAND);
+	tegra_dc_enable_general_act(dc);
+
+	tegra_dc_put(dc);
+}
+
+void tegra_dc_enable_disp_ctrl_mode(struct tegra_dc *dc)
+{
+	tegra_dc_get(dc);
+	/* Enable DC */
+	if (dc->out->flags & TEGRA_DC_OUT_NVSR_MODE)
+		tegra_dc_writel(dc, DISP_CTRL_MODE_NC_DISPLAY,
+			DC_CMD_DISPLAY_COMMAND);
+	else
+		tegra_dc_writel(dc, DISP_CTRL_MODE_C_DISPLAY,
+			DC_CMD_DISPLAY_COMMAND);
+
+	tegra_dc_enable_general_act(dc);
+	tegra_dc_put(dc);
+}
 
 static int tegra_dc_set_next(struct tegra_dc *dc)
 {

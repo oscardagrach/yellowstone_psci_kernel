@@ -557,13 +557,6 @@ static int parse_vrr_settings(struct platform_device *ndev,
 	} else
 		vrr->db_hist_cap = 0;
 
-	/*
-	 * VRR capability is set when we have vrr_settings section in DT
-	 * vrr_settings, vrr_min_fps, and vrr_max_fps should always be
-	 * set at the same time in DT.
-	 */
-	vrr->capability = 1;
-
 	return 0;
 }
 
@@ -2543,6 +2536,8 @@ struct tegra_dc_platform_data
 				goto fail_parse;
 			}
 #endif /* CONFIG_TRUSTED_LITTLE_KERNEL */
+			pdata->default_out->vrr_hotplug_state =
+						TEGRA_HPD_STATE_NORMAL;
 		}
 	} else
 		pr_info("%s: nvidia,hdmi-vrr-caps not present\n", __func__);

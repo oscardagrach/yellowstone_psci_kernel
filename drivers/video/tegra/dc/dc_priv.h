@@ -4,7 +4,7 @@
  * Copyright (C) 2010 Google, Inc.
  * Author: Erik Gilling <konkers@android.com>
  *
- * Copyright (c) 2010-2016, NVIDIA CORPORATION, All rights reserved.
+ * Copyright (c) 2010-2018, NVIDIA CORPORATION, All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -519,6 +519,10 @@ unsigned long tegra_dc_poll_register(struct tegra_dc *dc,
 u32 reg, u32 mask, u32 exp_val, u32 poll_interval_us,
 u32 timeout_ms);
 void tegra_dc_enable_general_act(struct tegra_dc *dc);
+
+/* defined in dc.c, used by hdmi2.0.c */
+void tegra_dc_enable_disp_ctrl_mode(struct tegra_dc *dc);
+void tegra_dc_disable_disp_ctrl_mode(struct tegra_dc *dc);
 
 /* defined in dc.c, used by ext/dev.c */
 extern int no_vsync;
