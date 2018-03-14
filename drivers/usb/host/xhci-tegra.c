@@ -1,7 +1,7 @@
 /*
  * xhci-tegra.c - Nvidia xHCI host controller driver
  *
- * Copyright (c) 2013-2017, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2018, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -4359,6 +4359,14 @@ static void tegra_xhci_free_dev(struct usb_hcd *hcd, struct usb_device *udev)
 {
 	struct xhci_hcd *xhci = hcd_to_xhci(hcd);
 	u32 portsc;
+
+	if (udev == NULL)
+		return;
+
+	if (xhci == NULL) {
+		dev_info(&udev->dev, "xhci is NULL");
+		return;
+	}
 
 	portsc = xhci_readl(xhci, xhci->usb2_ports[udev->portnum - 1]);
 	/* If disconnected from USB2.0 root hub */
