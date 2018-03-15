@@ -784,6 +784,37 @@ static void csb_write(struct tegra_xhci_hcd *tegra, u32 addr, u32 data)
 			input_addr, data);
 }
 
+/* sysfs node for fw check*/
+static ssize_t fw_version_show(struct device *dev,
+		struct device_attribute *attr, char *buf) {
+	struct platform_device *pdev = to_platform_device(dev);
+	struct tegra_xhci_hcd *tegra = platform_get_drvdata(pdev);
+	struct cfgtbl *cfg_tbl = NULL;
+	time_t fw_time;
+	struct tm fw_tm;
+
+	if (!tegra)
+		return scnprintf(buf, PAGE_SIZE, "device is not available\n");
+
+	cfg_tbl = (struct cfgtbl *) tegra->firmware.data;
+
+	fw_time = cfg_tbl->fwimg_created_time;
+	time_to_tm(fw_time, 0, &fw_tm);
+
+	return scnprintf(buf, PAGE_SIZE,
+			"Firmware timestamp: %ld-%02d-%02d %02d:%02d:%02d UTC, "
+			"Version: %02x.%02x %s\n",
+			fw_tm.tm_year + 1900,
+			fw_tm.tm_mon + 1, fw_tm.tm_mday, fw_tm.tm_hour,
+			fw_tm.tm_min, fw_tm.tm_sec,
+			FW_MAJOR_VERSION(cfg_tbl->version_id),
+			FW_MINOR_VERSION(cfg_tbl->version_id),
+			(cfg_tbl->build_log == FW_LOG_TYPE_DMA_SYS_MEM) ?
+			"debug" : "release");
+}
+
+static DEVICE_ATTR(fw_version, 0444, fw_version_show, NULL);
+
 static int fw_message_send(struct tegra_xhci_hcd *tegra,
 	enum MBOX_CMD_TYPE type, u32 data)
 {
@@ -6471,9 +6502,16 @@ static int tegra_xhci_probe2(struct tegra_xhci_hcd *tegra)
 			&xhci->shared_hcd->self);
 	}
 
+	ret = sysfs_create_file(&pdev->dev.kobj, &dev_attr_fw_version.attr);
+	if (ret) {
+		dev_err(&pdev->dev, "failed to create tegra sysfs file fw_version\n");
+		goto err_create_sysfs;
+	}
+
 	reinit_started = false;
 	return 0;
 
+err_create_sysfs:
 err_remove_usb3_hcd:
 	usb_remove_hcd(xhci->shared_hcd);
 err_put_usb3_hcd:
@@ -6561,6 +6599,9 @@ static int tegra_xhci_remove(struct platform_device *pdev)
 
 		tegra->init_done = false;
 	}
+
+	sysfs_remove_file(&dev->kobj, &dev_attr_fw_version.attr);
+
 	deinit_firmware(tegra);
 	fw_log_deinit(tegra);
 
