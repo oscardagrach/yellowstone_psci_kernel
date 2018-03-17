@@ -18,9 +18,12 @@
 #include <linux/err.h>
 #include <linux/init.h>
 #include <linux/of.h>
+#include <linux/of_address.h>
 #include <linux/slab.h>
 #include <linux/tegra-pmc.h>
 #include <linux/power/reset/system-pmic.h>
+
+#include "../../../arch/arm/mach-tegra/iomap.h"
 
 #define PMC_REG_8bit_MASK			0xFF
 #define PMC_REG_16bit_MASK			0xFFFF
@@ -36,6 +39,11 @@
 #define PMC_BR_COMMAND_CTRL_ID_SHIFT		27
 #define PMC_BR_COMMAND_CTRL_TYPE_SHIFT		30
 #define PMC_BR_COMMAND_RST_EN_SHIFT		31
+
+#define PMC_CNTRL_0					0x0
+#define WDT_STATUS_0 				0x4
+
+void __iomem *tegra_wdt_base = NULL;
 
 struct tegra_bootrom_block {
 	const char *name;
@@ -284,6 +292,9 @@ reg_update:
 static int tegra210_boorom_pmc_power_off_commands_init(struct device *dev)
 {
 	int ret;
+	unsigned long reset_val = 0;
+	unsigned long wdt_status_val = 0;
+	void __iomem *reset = IO_ADDRESS(TEGRA_PMC_BASE);
 
 	if (!br_off_commands) {
 		pr_info("T210 pmc config for power off not available\n");
@@ -295,7 +306,14 @@ static int tegra210_boorom_pmc_power_off_commands_init(struct device *dev)
 		pr_err("T210 pmc config for power off failed, %d\n", ret);
 		return ret;
 	}
-	pr_info("T210 pmc config for power off passed\n");
+	/* print the value of APBDEV_PMC_CNTRL_0 and watchdog registers */
+	if (reset != NULL)
+		reset_val = readl_relaxed(reset + PMC_CNTRL_0);
+	if (tegra_wdt_base != NULL)
+		wdt_status_val = readl(tegra_wdt_base + WDT_STATUS_0);
+	pr_info("T210 pmc config for power off passed, APBDEV_PMC_CNTRL_0 = 0x%08lx"
+			", WDT_STATUS_0 = 0x%08lx\n", reset_val, wdt_status_val);
+
 	return 0;
 }
 
@@ -305,9 +323,22 @@ static void tegra210_soc_power_off(void)
 	tegra_pmc_reset_system();
 }
 
+static const struct of_device_id wdt_matches[] __initconst = {
+	{ .compatible = "nvidia,tegra-wdt" },
+	{ }
+};
+
 int tegra210_boorom_pmc_init(struct device *dev)
 {
 	int ret;
+	struct device_node *np = NULL;
+
+	np = of_find_matching_node(NULL, wdt_matches);
+	if (!np)
+		pr_info("Cannot find wdt node from device tree\n");
+	else {
+		tegra_wdt_base = of_iomap(np, 0);
+	}
 
 	ret = tegra_bootrom_get_commands_from_dt(dev, &br_rst_commands,
 				&br_off_commands);
