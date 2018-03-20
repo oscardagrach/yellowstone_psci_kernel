@@ -52,6 +52,9 @@
 #ifdef CONFIG_CIFS_SMB2
 #include "smb2pdu.h"
 #endif
+#ifdef CONFIG_CIFS_SYSFS
+#include "sysfs.h"
+#endif
 
 int cifsFYI = 0;
 int traceSMB = 0;
@@ -1210,8 +1213,13 @@ init_cifs(void)
 	rc = register_filesystem(&cifs_fs_type);
 	if (rc)
 		goto out_init_cifs_idmap;
-
+#ifdef CONFIG_CIFS_SYSFS
+        rc = cifs_sysfs_init();
+        if (rc)
+		printk(KERN_WARNING "CIFS: Failed to init sysfs: %d\n", rc);
+#endif
 	return 0;
+
 
 out_init_cifs_idmap:
 #ifdef CONFIG_CIFS_ACL
@@ -1240,6 +1248,9 @@ static void __exit
 exit_cifs(void)
 {
 	cifs_dbg(NOISY, "exit_cifs\n");
+#ifdef CONFIG_CIFS_SYSFS
+	cifs_sysfs_exit();
+#endif
 	unregister_filesystem(&cifs_fs_type);
 	cifs_dfs_release_automount_timer();
 #ifdef CONFIG_CIFS_ACL
