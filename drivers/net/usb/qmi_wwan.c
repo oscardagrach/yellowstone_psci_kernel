@@ -4,6 +4,7 @@
  * The probing code is heavily inspired by cdc_ether, which is:
  * Copyright (C) 2003-2005 by David Brownell
  * Copyright (C) 2006 by Ole Andre Vadla Ravnas (ActiveSync)
+ * Copyright (c) 2018, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -237,6 +238,11 @@ static int qmi_wwan_bind(struct usbnet *dev, struct usb_interface *intf)
 	/* and a number of CDC descriptors */
 	while (len > 3) {
 		struct usb_descriptor_header *h = (void *)buf;
+
+		if ((len < buf[0]) || (buf[0] < 3)) {
+			dev_err(&intf->dev, "invalid descriptor buffer length\n");
+			goto err;
+		}
 
 		/* ignore any misplaced descriptors */
 		if (h->bDescriptorType != USB_DT_CS_INTERFACE)

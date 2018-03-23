@@ -2,6 +2,7 @@
  * CDC Ethernet based networking peripherals
  * Copyright (C) 2003-2005 by David Brownell
  * Copyright (C) 2006 by Ole Andre Vadla Ravnas (ActiveSync)
+ * Copyright (c) 2018, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -129,6 +130,11 @@ int usbnet_generic_cdc_bind(struct usbnet *dev, struct usb_interface *intf)
 	memset(info, 0, sizeof *info);
 	info->control = intf;
 	while (len > 3) {
+		if ((len < buf[0]) || (buf[0] < 3)) {
+			dev_err(&intf->dev, "invalid descriptor buffer length\n");
+			goto bad_desc;
+		}
+
 		if (buf [1] != USB_DT_CS_INTERFACE)
 			goto next_desc;
 

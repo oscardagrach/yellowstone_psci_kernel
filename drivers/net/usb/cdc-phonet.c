@@ -2,6 +2,7 @@
  * phonet.c -- USB CDC Phonet host driver
  *
  * Copyright (C) 2008-2009 Nokia Corporation. All rights reserved.
+ * Copyright (c) 2018, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author: Rémi Denis-Courmont
  *
@@ -345,8 +346,11 @@ int usbpn_probe(struct usb_interface *intf, const struct usb_device_id *id)
 	len = intf->altsetting->extralen;
 	while (len >= 3) {
 		u8 dlen = data[0];
-		if (dlen < 3)
+
+		if ((len < dlen) || (dlen < 3)) {
+			dev_err(&intf->dev, "invalid descriptor buffer length");
 			return -EINVAL;
+		}
 
 		/* bDescriptorType */
 		if (data[1] == USB_DT_CS_INTERFACE) {
