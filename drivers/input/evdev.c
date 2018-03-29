@@ -29,6 +29,10 @@
 #include <linux/wakelock.h>
 #include "input-compat.h"
 
+#define CREATE_TRACE_POINTS
+#include <trace/events/atrace.h>
+#define TRACE_INPUT_ID (100)
+
 struct evdev {
 	int open;
 	struct input_handle handle;
@@ -100,6 +104,8 @@ static void evdev_pass_values(struct evdev_client *client,
 
 	event.time = ktime_to_timeval(client->clkid == CLOCK_MONOTONIC ?
 				      mono : real);
+	trace_async_atrace_begin("nvtrace_input_kernel", TRACE_INPUT_ID,
+		((int) (event.time.tv_sec * 1000) + ((event.time.tv_usec) / 1000)));
 
 	/* Interrupts are disabled, just acquire the lock. */
 	spin_lock(&client->buffer_lock);
