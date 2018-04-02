@@ -1,7 +1,7 @@
 /*
  * GK20A Graphics
  *
- * Copyright (c) 2011-2016, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2018, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -29,6 +29,7 @@
 #include <linux/nvhost.h>
 #include <trace/events/gk20a.h>
 
+#include <gk20a/barrier.h>
 #include "gk20a.h"
 #include "kind_gk20a.h"
 #include "gr_ctx_gk20a.h"
@@ -3647,6 +3648,8 @@ int gr_gk20a_query_zbc(struct gk20a *g, struct gr_gk20a *gr,
 				"invalid zbc color table index\n");
 			return -EINVAL;
 		}
+
+		nvgpu_speculation_barrier();
 		for (i = 0; i < GK20A_ZBC_COLOR_VALUE_SIZE; i++) {
 			query_params->color_l2[i] =
 				gr->zbc_col_tbl[index].color_l2[i];
@@ -3662,6 +3665,8 @@ int gr_gk20a_query_zbc(struct gk20a *g, struct gr_gk20a *gr,
 				"invalid zbc depth table index\n");
 			return -EINVAL;
 		}
+
+		nvgpu_speculation_barrier();
 		query_params->depth = gr->zbc_dep_tbl[index].depth;
 		query_params->format = gr->zbc_dep_tbl[index].format;
 		query_params->ref_cnt = gr->zbc_dep_tbl[index].ref_cnt;
