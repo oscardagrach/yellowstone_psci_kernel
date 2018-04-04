@@ -12,6 +12,9 @@ ccflags-$(CONFIG_GK20A) += -I$(srctree)/../kernel-t18x/include
 ccflags-$(CONFIG_GK20A) += -I$(srctree)/../kernel-t18x/include/uapi
 endif
 
+# Turn off when this is fixed upstream, if ever.
+ccflags-y += -D__NVGPU_PREVENT_UNTRUSTED_SPECULATION
+
 obj-$(CONFIG_GK20A) := nvgpu.o
 
 nvgpu-y := \
