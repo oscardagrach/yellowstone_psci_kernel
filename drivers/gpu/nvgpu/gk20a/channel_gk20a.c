@@ -1,7 +1,7 @@
 /*
  * GK20A Graphics channel
  *
- * Copyright (c) 2011-2017, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2018, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -33,6 +33,7 @@
 #include "dbg_gpu_gk20a.h"
 #include "fence_gk20a.h"
 #include "semaphore_gk20a.h"
+#include <gk20a/barrier.h>
 
 #include "hw_ram_gk20a.h"
 #include "hw_fifo_gk20a.h"
@@ -645,6 +646,8 @@ static int gk20a_init_error_notifier(struct channel_gk20a *ch,
 		gk20a_err(dev, "gk20a_init_error_notifier: invalid offset\n");
 		return -EINVAL;
 	}
+
+	nvgpu_speculation_barrier();
 
 	/* map handle */
 	va = dma_buf_vmap(dmabuf);
@@ -2315,6 +2318,8 @@ static int gk20a_channel_wait(struct channel_gk20a *ch,
 			gk20a_err(d, "invalid notifier offset\n");
 			return -EINVAL;
 		}
+
+		nvgpu_speculation_barrier();
 
 		notif = dma_buf_vmap(dmabuf);
 		if (!notif) {

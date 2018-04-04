@@ -1,7 +1,7 @@
 /*
  * GK20A Cycle stats snapshots support (subsystem for gr_gk20a).
  *
- * Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2015-2018, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -22,6 +22,7 @@
 #include <linux/mutex.h>
 #include <linux/vmalloc.h>
 
+#include <gk20a/barrier.h>
 #include "gk20a.h"
 #include "hw_perf_gk20a.h"
 #include "hw_mc_gk20a.h"
@@ -503,6 +504,8 @@ static u32 css_gr_allocate_perfmon_ids(struct gk20a_cs_snapshot *data,
 
 	if (!count || count > CSS_MAX_PERFMON_IDS - CSS_FIRST_PERFMON_ID)
 		return 0;
+
+	nvgpu_speculation_barrier();
 
 	for (f = CSS_FIRST_PERFMON_ID; f <= e; f++) {
 		u32 slots;
