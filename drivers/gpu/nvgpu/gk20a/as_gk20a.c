@@ -1,7 +1,7 @@
 /*
  * GK20A Address Spaces
  *
- * Copyright (c) 2011-2015, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2018, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -23,6 +23,7 @@
 #include <uapi/linux/nvgpu.h>
 
 #include "gk20a.h"
+#include <gk20a/barrier.h>
 
 /* dumb allocator... */
 static int generate_as_share_id(struct gk20a_as *as)
@@ -202,6 +203,8 @@ static int gk20a_as_ioctl_map_buffer_batch(
 			break;
 		}
 
+		nvgpu_speculation_barrier();
+
 		err = gk20a_vm_unmap_buffer(as_share->vm, unmap_args.offset,
 					    &batch);
 		if (err)
@@ -225,6 +228,8 @@ static int gk20a_as_ioctl_map_buffer_batch(
 			err = -EFAULT;
 			break;
 		}
+
+		nvgpu_speculation_barrier();
 
 		err = gk20a_vm_map_buffer(
 			as_share->vm, map_args.dmabuf_fd,
@@ -266,6 +271,7 @@ static int gk20a_as_ioctl_get_va_regions(
 	if (write_entries > page_sizes)
 		write_entries = page_sizes;
 
+	nvgpu_speculation_barrier();
 	user_region_ptr =
 		(struct nvgpu_as_va_region __user *)(uintptr_t)args->buf_addr;
 

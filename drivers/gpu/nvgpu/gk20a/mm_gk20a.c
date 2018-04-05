@@ -1,7 +1,7 @@
 /*
  * GK20A memory management
  *
- * Copyright (c) 2011-2017, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2018, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -30,6 +30,7 @@
 #include <uapi/linux/nvgpu.h>
 #include <trace/events/gk20a.h>
 
+#include <gk20a/barrier.h>
 #include "gk20a.h"
 #include "mm_gk20a.h"
 #include "fence_gk20a.h"
@@ -987,6 +988,8 @@ u64 gk20a_vm_alloc_va(struct vm_gk20a *vm,
 		return 0;
 
 	}
+
+	nvgpu_speculation_barrier();
 
 	/* Be certain we round up to gmmu_page_size if needed */
 	size = (size + ((u64)gmmu_page_size - 1)) & ~((u64)gmmu_page_size - 1);
