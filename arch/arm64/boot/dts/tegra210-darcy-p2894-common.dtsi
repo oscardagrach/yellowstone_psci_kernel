@@ -1,7 +1,7 @@
 /*
  * arch/arm64/boot/dts/tegra210-darcy-p2894-common.dtsi
  *
- * Copyright (c) 2015-2017, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2015-2018, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -192,6 +192,7 @@
 		nvidia,fastboot_without_usb;
 		nvidia,gpu-disable-power-saving;
 		bootargs = "androidboot.secureos=tlk";
+		firmware-blob-partition = "RP4";
 		verified-boot {
 			ui-timeout-ms {
 				yellow-state = <7000>;
