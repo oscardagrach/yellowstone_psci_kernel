@@ -1,6 +1,7 @@
 /*
  * Based on arch/arm/include/asm/barrier.h
  *
+ * Copyright (c) 2018, NVIDIA CORPORATION.  All rights reserved.
  * Copyright (C) 2012 ARM Ltd.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -98,6 +99,9 @@ do {									\
 
 #define set_mb(var, value)	do { var = value; smp_mb(); } while (0)
 #define nop()		asm volatile("nop");
+
+#define speculation_barrier()	asm volatile("dsb sy\n"			\
+						"isb\n" : : : "memory")
 
 #endif	/* __ASSEMBLY__ */
 
