@@ -1,7 +1,7 @@
 /*
  * drivers/misc/tegra-profiler/debug.h
  *
- * Copyright (c) 2013-2017, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2018, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -82,7 +82,12 @@ quadd_get_hw_event_str(int event)
 		[QUADD_EVENT_HW_L2_DCACHE_WRITE_MISSES]	= "l2_d_write",
 		[QUADD_EVENT_HW_L2_ICACHE_MISSES]	= "l2_i",
 	};
-	return (event < QM_ARRAY_SIZE(str)) ? str[event] : "invalid event";
+
+	if (event >= QM_ARRAY_SIZE(str))
+		return "invalid event";
+
+	speculation_barrier();
+	return str[event];
 }
 
 #endif	/* __QUADD_DEBUG_H */
