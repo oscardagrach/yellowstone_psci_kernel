@@ -1,7 +1,7 @@
 /*
  * Tegra Graphics Host Client Module
  *
- * Copyright (c) 2010-2016, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2010-2018, NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -1121,8 +1121,12 @@ static long nvhost_channelctl(struct file *filp,
 		struct nvhost_get_param_arg *arg =
 			(struct nvhost_get_param_arg *)buf;
 
-		if (arg->param >= NVHOST_MODULE_MAX_MODMUTEXES ||
-		    !pdata->modulemutexes[arg->param]) {
+		if (arg->param >= NVHOST_MODULE_MAX_MODMUTEXES) {
+			err = -EINVAL;
+			break;
+		}
+		speculation_barrier();
+		if (!pdata->modulemutexes[arg->param]) {
 			err = -EINVAL;
 			break;
 		}
