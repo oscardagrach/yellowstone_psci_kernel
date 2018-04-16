@@ -795,14 +795,21 @@ static irqreturn_t tegra_hdmi_hpd_irq_handler(int irq, void *ptr)
 {
 	struct tegra_dc *dc = ptr;
 	struct tegra_hdmi *hdmi = tegra_dc_get_outdata(dc);
+	unsigned int hpd_debounce = HDMI_HPD_DEBOUNCE_DELAY_MS;
 
 	if (atomic_read(&hdmi->suspended))
 		return IRQ_HANDLED;
 
 	tegra_nvhdcp_clear_fallback(hdmi->nvhdcp);
 	cancel_delayed_work(&hdmi->hpd_worker);
+
+	if (tegra_edid_get_quirks(hdmi->edid) &
+			TEGRA_EDID_QUIRK_HPD_BOUNCE) {
+		hpd_debounce = HDMI_HPD_DEBOUNCE_WAR_DELAY_MS;
+	}
+
 	schedule_delayed_work(&hdmi->hpd_worker,
-				msecs_to_jiffies(HDMI_HPD_DEBOUNCE_DELAY_MS));
+				msecs_to_jiffies(hpd_debounce));
 
 	return IRQ_HANDLED;
 }

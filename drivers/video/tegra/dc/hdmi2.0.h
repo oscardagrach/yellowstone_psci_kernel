@@ -1,7 +1,7 @@
 /*
  * drivers/video/tegra/dc/hdmi2.0.h
  *
- * Copyright (c) 2014-2017, NVIDIA CORPORATION, All rights reserved.
+ * Copyright (c) 2014-2018, NVIDIA CORPORATION, All rights reserved.
  * Author: Animesh Kishore <ankishore@nvidia.com>
  *
  * This software is licensed under the terms of the GNU General Public
@@ -22,6 +22,7 @@
 #define HDMI_EDID_MAX_LENGTH (4 * EDID_BYTES_PER_BLOCK)
 #define HDMI_HPD_DROP_TIMEOUT_MS	(1500)
 #define HDMI_HDR_INFOFRAME_STOP_TIMEOUT_MS	(2000)
+#define HDMI_HPD_DEBOUNCE_WAR_DELAY_MS	(4000)
 
 /* SCDC block */
 #define HDMI_SCDC_TMDS_CONFIG_OFFSET	(0x20)
