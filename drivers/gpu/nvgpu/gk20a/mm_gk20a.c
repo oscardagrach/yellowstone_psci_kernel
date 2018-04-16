@@ -3009,6 +3009,13 @@ int gk20a_vm_alloc_space(struct gk20a_as_share *as_share,
 		goto clean_up;
 	}
 
+	/*
+	 * pgsz_idx isn't likely to get too crazy, since it starts at 0 and
+	 * increments but this ensures that we still have a definitely valid
+	 * page size before proceeding.
+	 */
+	nvgpu_speculation_barrier();
+
 	va_node = kzalloc(sizeof(*va_node), GFP_KERNEL);
 	if (!va_node) {
 		err = -ENOMEM;
