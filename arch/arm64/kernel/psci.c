@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2014-2018, NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -20,6 +20,7 @@
 #include <linux/export.h>
 #include <linux/init.h>
 #include <linux/of.h>
+#include <linux/of_address.h>
 #include <linux/smp.h>
 #include <linux/reboot.h>
 #include <linux/pm.h>
@@ -34,6 +35,13 @@
 #include <asm/proc-fns.h>
 #include <asm/suspend.h>
 #include <asm/system_misc.h>
+
+#include "../../arm/mach-tegra/iomap.h"
+
+#define PMC_CNTRL_0				0x0
+#define WDT_STATUS_0				0x4
+
+static void __iomem *tegra_wdt_base_addr;
 
 struct psci_operations psci_ops;
 
@@ -236,6 +244,25 @@ static int psci_restart_notify(struct notifier_block *nb,
 {
 	enum reboot_mode mode = (enum reboot_mode)action;
 	const char *cmd = (const char *)data;
+	unsigned long reset_val = 0;
+	unsigned long wdt_status_val = 0;
+	void __iomem *reset = IO_ADDRESS(TEGRA_PMC_BASE);
+	char debug_msg[60] = "";
+
+	/* print the value of APBDEV_PMC_CNTRL_0 and watchdog registers */
+	if (reset != NULL) {
+		reset_val = readl_relaxed(reset + PMC_CNTRL_0);
+		sprintf(debug_msg, "APBDEV_PMC_CNTRL_0 = 0x%08lx", reset_val);
+	}
+	if (tegra_wdt_base_addr != NULL) {
+		if (strlen(debug_msg) != 0)
+			sprintf(debug_msg + strlen(debug_msg), ", ");
+		wdt_status_val = readl(tegra_wdt_base_addr + WDT_STATUS_0);
+		sprintf(debug_msg + strlen(debug_msg),
+				"WDT_STATUS_0 = 0x%08lx", wdt_status_val);
+	}
+	if (strlen(debug_msg) != 0)
+		pr_info("%s\n", debug_msg);
 
 	/* restart the system */
 	psci_sys_reset(mode, cmd);
@@ -390,11 +417,25 @@ static int __init cpu_psci_cpu_prepare(unsigned int cpu)
 	return 0;
 }
 
+static const struct of_device_id wdt_matches[] __initconst = {
+	{ .compatible = "nvidia,tegra-wdt" },
+	{ }
+};
+
 static int cpu_psci_cpu_boot(unsigned int cpu)
 {
+	struct device_node *wdt_np = NULL;
 	int err = psci_ops.cpu_on(cpu_logical_map(cpu), __pa(secondary_entry));
 	if (err)
 		pr_err("failed to boot CPU%d (%d)\n", cpu, err);
+
+	if (tegra_wdt_base_addr == NULL) {
+		wdt_np = of_find_matching_node(NULL, wdt_matches);
+		if (!wdt_np)
+			pr_err("Cannot find wdt node from device tree\n");
+		else
+			tegra_wdt_base_addr = of_iomap(wdt_np, 0);
+	}
 
 	return err;
 }
