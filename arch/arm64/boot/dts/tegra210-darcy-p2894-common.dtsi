@@ -498,13 +498,13 @@
 			};
 			CC_TW {
 				iso_abbrev = "TW";
-				custom_locale = "TW";
-				custom_locale_rev = <982>;
+				custom_locale = "US";
+				custom_locale_rev = <921>;
 			};
 			CC_SG {
 				iso_abbrev = "SG";
-				custom_locale = "US";
-				custom_locale_rev = <921>;
+				custom_locale = "DE";
+				custom_locale_rev = <987>;
 			};
 			CC_HK {
 				iso_abbrev = "HK";
