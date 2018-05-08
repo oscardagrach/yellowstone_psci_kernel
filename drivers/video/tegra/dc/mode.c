@@ -3,7 +3,7 @@
  *
  * Copyright (C) 2010 Google, Inc.
  *
- * Copyright (c) 2010-2016, NVIDIA CORPORATION, All rights reserved.
+ * Copyright (c) 2010-2018, NVIDIA CORPORATION, All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -209,6 +209,21 @@ int tegra_dc_calc_refresh(const struct tegra_dc_mode *m)
 		m->v_sync_width;
 
 	return _tegra_dc_calc_refresh(pclk, h_total, v_total);
+}
+
+long tegra_dc_calc_pclk(const struct tegra_dc_mode *m, int refresh)
+{
+	long h_total, v_total;
+	long pclk;
+
+	h_total = m->h_active + m->h_front_porch + m->h_back_porch +
+		m->h_sync_width;
+	v_total = m->v_active + m->v_front_porch + m->v_back_porch +
+		m->v_sync_width;
+
+	pclk = (refresh * h_total * v_total) / 1000;
+
+	return pclk;
 }
 
 /* return in 1000ths of a Hertz */

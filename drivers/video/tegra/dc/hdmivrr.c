@@ -847,9 +847,21 @@ void _tegra_hdmivrr_activate(struct tegra_hdmi *hdmi, bool activate)
 	struct tegra_vrr *vrr  = dc->out->vrr;
 	struct fb_videomode *fbmode = tegra_fb_get_mode(dc);
 	int frametime_ms = (int)div64_s64(dc->frametime_ns, NS_IN_MS);
+	int refresh;
+	long pclk;
+#ifdef CONFIG_TEGRA_NVDISPLAY
+	struct clk *parent_clk = tegra_disp_clk_get(&dc->ndev->dev,
+				dc->out->parent_clk ? : "plld2");
+#else
+	struct clk *parent_clk = clk_get(NULL,
+				dc->out->parent_clk ? : "pll_d2");
+#endif
 
 	if (!vrr || !fbmode || !(dc->mode.vmode & FB_VMODE_VRR))
 		return;
+
+	/* Compute refresh rate before modifying v_back_porch */
+	refresh = tegra_dc_calc_refresh(&dc->mode);
 
 	if (activate) {
 		/*
@@ -862,6 +874,14 @@ void _tegra_hdmivrr_activate(struct tegra_hdmi *hdmi, bool activate)
 		dc->mode.v_back_porch = fbmode->upper_margin + 2;
 	} else
 		dc->mode.v_back_porch = fbmode->upper_margin;
+
+	/* Compensate the pclk for increase in v_back_porch.
+	 * Recompute pclk to maintain the same refresh rate.
+	 */
+	pclk = tegra_dc_calc_pclk(&dc->mode, refresh);
+	dc->mode.pclk = pclk;
+	if (clk_get_rate(parent_clk) != dc->mode.pclk)
+		clk_set_rate(parent_clk, dc->mode.pclk);
 
 	_tegra_dc_set_mode(dc, &dc->mode);
 	dc->mode_dirty = true;
