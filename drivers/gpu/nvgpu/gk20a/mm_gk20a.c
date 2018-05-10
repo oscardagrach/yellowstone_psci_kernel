@@ -2536,6 +2536,9 @@ static int update_gmmu_ptes_locked(struct vm_gk20a *vm,
 	if (space_to_skip & (page_size - 1))
 		return -EINVAL;
 
+	if (ctag)
+		ctag += (u32)(space_to_skip & (ctag_granularity - 1U));
+
 	if (sgt) {
 		iova = g->ops.mm.get_iova_addr(vm->mm->g, sgt->sgl, 0);
 		if (!vm->mm->bypass_smmu && iova) {
