@@ -33,6 +33,8 @@ static const struct hdmi_blacklist {
 	{ "DON", 48, "DENON-AVR",   TEGRA_EDID_QUIRK_NO_YUV_422 },
 	/* BlackMagic 12G SDI */
 	{ "BMD", 0,    "BMD HDMI",  TEGRA_EDID_QUIRK_NO_HDCP    },
+	/* AVerMedia External Capture */
+	{ "AVX", 4,    "AVT GC510", TEGRA_EDID_QUIRK_NO_HDCP    },
 	/* Few TVs causing HPD bounce for 1-4 seconds */
 	{ "YMH", 12774,"RX-A1070",  TEGRA_EDID_QUIRK_HPD_BOUNCE },
 	{ "SAM", 3387, "SAMSUNG",   TEGRA_EDID_QUIRK_HPD_BOUNCE },
