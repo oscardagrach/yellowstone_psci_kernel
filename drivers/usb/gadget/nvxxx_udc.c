@@ -1,7 +1,7 @@
 /*
 * nvxxx_udc.c - Nvidia device mode implementation
 *
-* Copyright (c) 2013-2016, NVIDIA CORPORATION.  All rights reserved.
+* Copyright (c) 2013-2018, NVIDIA CORPORATION.  All rights reserved.
 *
 * This program is free software; you can redistribute it and/or modify it
 * under the terms and conditions of the GNU General Public License,
@@ -470,7 +470,7 @@ static void nvudc_reschedule_babble_work(struct work_struct *work)
 						req->udc_req_ptr->
 							usb_req.stream_id);
 
-				dev_dbg(nvudc->dev,
+				dev_vdbg(nvudc->dev,
 					"DOORBELL = 0x%x, ep:%p, req:%p\n",
 					u_temp, req->udc_ep_ptr,
 					req->udc_req_ptr);
@@ -483,8 +483,8 @@ static void nvudc_reschedule_babble_work(struct work_struct *work)
 		kfree(req);
 	}
 	spin_unlock_irqrestore(&nvudc->lock, flags);
-	dev_dbg(nvudc->dev, "%s: scheduled transfer count = %d\n", __func__,
-		nvudc->babble_count);
+	dev_vdbg(nvudc->dev, "%s: scheduled transfer count = %d\n",
+		__func__, nvudc->babble_count);
 }
 
 static void nvudc_clear_babble_transfer_queue(struct nv_udc_s *nvudc)
@@ -518,8 +518,8 @@ static void nvudc_queue_babble_transfer(struct nv_udc_s *nvudc,
 	/* hold off any doorbells on this endpoint */
 	req->udc_ep_ptr->pending_babble++;
 
-	dev_dbg(nvudc->dev, "%s: ep:%p req:%p\n", __func__, udc_ep_ptr,
-		udc_req_ptr);
+	dev_vdbg(nvudc->dev, "%s: ep:%p req:%p\n", __func__,
+		udc_ep_ptr, udc_req_ptr);
 }
 #endif
 
@@ -1162,7 +1162,7 @@ static void nvudc_handle_babble_completion(struct nv_udc_s *nvudc,
 #ifdef NV_DISABLE_RCV_DET
 	if (udc_req_ptr && udc_req_ptr->babble) {
 		udc_req_ptr->babble = false;
-		dev_dbg(nvudc->dev,
+		dev_vdbg(nvudc->dev,
 			"completion status = %d (ep:%p, req:%p)\n",
 			status, udc_ep_ptr, udc_req_ptr);
 		if (nvudc->babble_count == 0)
@@ -3307,7 +3307,7 @@ int nvudc_handle_exfer_event(struct nv_udc_s *nvudc, struct event_trb_s *event)
 			usb_endpoint_dir_out(udc_ep_ptr->desc) &&
 			!usb_endpoint_xfer_control(udc_ep_ptr->desc)) {
 			udc_req_ptr->trigger_babble = false;
-			dev_dbg(nvudc->dev,
+			dev_vdbg(nvudc->dev,
 				"babble (req:%p, trb:%p) actual req len=%d, actual trb len=%d\n",
 				udc_req_ptr, p_trb, udc_req_ptr->actual_len,
 				udc_req_ptr->first_trb_len);
