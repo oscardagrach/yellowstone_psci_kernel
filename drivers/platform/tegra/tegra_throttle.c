@@ -1,7 +1,7 @@
 /*
  * drivers/platform/tegra/tegra_throttle.c
  *
- * Copyright (c) 2011-2014, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2011-2018, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -217,6 +217,9 @@ tegra_throttle_set_cur_state(struct thermal_cooling_device *cdev,
 
 	if (cpu_freq_table == NULL)
 		return 0;
+
+	if (cur_state > bthrot->throt_tab_size)
+		return -EINVAL;
 
 	if (bthrot->cur_state == cur_state)
 		return 0;
