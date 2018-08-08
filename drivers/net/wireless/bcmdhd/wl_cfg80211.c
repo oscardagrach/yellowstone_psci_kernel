@@ -9256,6 +9256,9 @@ wl_notify_connect_status(struct bcm_cfg80211 *cfg, bcm_struct_cfgdev *cfgdev,
 				WL_DBG(("joined in BSS network \"%s\"\n",
 					((struct wlc_ssid *)
 					 wl_read_prof(cfg, ndev, WL_PROF_SSID))->SSID));
+#ifdef CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
+				TEGRA_SYSFS_HISTOGRAM_STAT_UPDATE_4WHS();
+#endif
 			}
 			wl_update_prof(cfg, ndev, e, &act, WL_PROF_ACT);
 			wl_update_prof(cfg, ndev, NULL, (const void *)&e->addr, WL_PROF_BSSID);
@@ -9318,6 +9321,7 @@ wl_notify_connect_status(struct bcm_cfg80211 *cfg, bcm_struct_cfgdev *cfgdev,
 #ifdef CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
 				if (ntoh32(e->reason) == 15) {
 					TEGRA_SYSFS_HISTOGRAM_STAT_INC(connect_fail_reason_15);
+					TEGRA_SYSFS_HISTOGRAM_STAT_UPDATE_4WHS();
 				}
 
 				/* Reset per connection lifetime stats */
@@ -9413,6 +9417,11 @@ wl_notify_connect_status(struct bcm_cfg80211 *cfg, bcm_struct_cfgdev *cfgdev,
 		} else if (wl_is_nonetwork(cfg, e)) {
 			WL_ERR(("connect failed event=%d e->status %d e->reason %d \n",
 				event, (int)ntoh32(e->status), (int)ntoh32(e->reason)));
+#ifdef CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
+			if (event == 0 && (int)ntoh32(e->status) == 1) {
+				TEGRA_SYSFS_HISTOGRAM_STAT_INC(connect_fail_set_ssid);
+			}
+#endif
 			/* Clean up any pending scan request */
 			wl_cfg80211_cancel_scan(cfg);
 			if (wl_get_drv_status(cfg, CONNECTING, ndev))
