@@ -1570,6 +1570,13 @@ config SENSORS_INA3221
 	help
 	  Support for the TI INA3221 power monitor sensor.
 
+config SENSORS_INA3221_YELLOWSTONE
+	tristate "Texas Instruments INA3221(YS) POWER MONITOR SENSOR DRIVER"
+	depends on I2C
+	default n
+	help
+	  Support for the TI INA3221 power monitor sensor.
+
 if ACPI
 
 comment "ACPI drivers"
