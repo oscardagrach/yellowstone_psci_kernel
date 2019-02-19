@@ -1,0 +1,6 @@
+config SENSORHUB_LDISC
+	tristate "Sensorhub line discipline"
+	depends on TTY
+	help
+	  Provides line dsicipline for sensorhub
+

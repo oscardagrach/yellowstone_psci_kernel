@@ -93,3 +93,4 @@ obj-$(CONFIG_NV_GAMEPAD_RESET)	+= nv_gamepad_reset.o
 obj-$(CONFIG_SAF775x_HWDEP)	+= saf775x/
 obj-$(CONFIG_TEGRA_CPC)		+= tegra_cpc.o
 obj-$(CONFIG_UID_CPUTIME) += uid_cputime.o
+obj-$(CONFIG_SENSORHUB_LDISC) += sensorhub/
