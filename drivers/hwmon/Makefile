@@ -147,6 +147,7 @@ obj-$(CONFIG_SENSORS_WM8350)	+= wm8350-hwmon.o
 obj-$(CONFIG_SENSORS_INA219)	+= ina219.o
 obj-$(CONFIG_SENSORS_INA230)	+= ina230.o
 obj-$(CONFIG_SENSORS_INA3221)	+= ina3221.o
+obj-$(SENSORS_INA3221_YELLOWSTONE)	+= ina3221_yellowstone.c
 obj-$(CONFIG_SENSORS_TMON_TMP411)	+= tmon-tmp411.o
 
 obj-$(CONFIG_PMBUS)		+= pmbus/
