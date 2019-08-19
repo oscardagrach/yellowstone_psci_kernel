@@ -19,8 +19,8 @@
 #include <linux/delay.h>
 #include <linux/module.h>	/* Module definition */
 
-#include <linux/spi/rm31080a_ts.h>
-#include <linux/spi/rm31080a_ctrl.h>
+#include <linux/spi/rm31080a_ts_old.h>
+#include <linux/spi/rm31080a_ctrl_old.h>
 
 /*=============================================================================
 	GLOBAL VARIABLES DECLARATION
