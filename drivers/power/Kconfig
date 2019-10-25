@@ -65,6 +65,14 @@ config CHARGER_BQ2477X
 	  Say Y here to enable driver support for TI BQ24770/
 	  BQ24773 Battery Charger.
 
+config BATTERY_BQ28Z610
+	tristate "TI's BQ28Z610 Fuel Gauge"
+	depends on I2C
+	select BATTERY_CHARGER_GAUGE_COMM
+	help
+	  BQ28Z610 is fuel-gauge systems for lithium-ion (Li+) batteries
+	  in handheld and portable equipment.
+
 config APM_POWER
 	tristate "APM emulation for class batteries"
 	depends on APM_EMULATION
