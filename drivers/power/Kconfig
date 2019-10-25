@@ -65,6 +65,15 @@ config CHARGER_BQ2477X
 	  Say Y here to enable driver support for TI BQ24770/
 	  BQ24773 Battery Charger.
 
+config CHARGER_BQ24773
+	tristate "BQ24773(YS) Charger driver support"
+	depends on I2C
+	help
+	  BQ2477X is a companion pmic for smartphones and tablets
+	  which supports battery charging feature.
+	  Say Y here to enable driver support for TI BQ24770/
+	  BQ24773 Battery Charger.
+
 config BATTERY_BQ28Z610
 	tristate "TI's BQ28Z610 Fuel Gauge"
 	depends on I2C
