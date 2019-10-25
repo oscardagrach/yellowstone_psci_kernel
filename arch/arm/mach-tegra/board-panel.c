@@ -346,6 +346,8 @@ static bool tegra_available_pwm_bl_ops_register(struct device *dev)
 		dev_set_drvdata(dev, dsi_o_720p_6_0_ops.pwm_bl_ops);
 	} else if (of_device_is_compatible(np_bl, "o,720-1280-6-0-01-bl")) {
 		dev_set_drvdata(dev, dsi_o_720p_6_0_01_ops.pwm_bl_ops);
+	} else if (of_device_is_compatible(np_bl, "j,wuxga-7-bl")) {
+		dev_set_drvdata(dev, dsi_j_wuxga_7_ops.pwm_bl_ops);
 	} else {
 		pr_info("invalid compatible for backlight node\n");
 		goto end;
@@ -590,6 +592,9 @@ static struct device_node *available_internal_panel_select(
 	} else if (of_device_is_compatible(np_panel, "o,720-1280-6-0-01")) {
 		tegra_panel_register_ops(dc_out,
 			&dsi_o_720p_6_0_01_ops);
+	} else if (of_device_is_compatible(np_panel, "j,wuxga-7")) {
+		tegra_panel_register_ops(dc_out,
+			&dsi_j_wuxga_7_ops);
 	} else {
 		pr_info("invalid panel compatible\n");
 		of_node_put(np_panel);
@@ -626,6 +631,8 @@ static struct device_node
 	switch (display_board.board_id) {
 	case BOARD_E1627:
 	case BOARD_E1797:
+		if (of_machine_is_compatible("nvidia,yellowstone"))
+			break;
 		np_panel = of_find_compatible_node(NULL, NULL, "p,wuxga-10-1");
 		if (np_panel && pdata && dc_out)
 			tegra_panel_register_ops(dc_out,

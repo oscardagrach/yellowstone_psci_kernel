@@ -30,7 +30,7 @@
 //#include "tegra124-platforms/tegra124-yellowstone-sysedp.dtsi"
 #include "tegra124-platforms/tegra124-yellowstone-powermon.dtsi"
 #include "tegra124-platforms/tegra124-yellowstone-dfll.dtsi"
-//#include "panel-j-wuxga-7.dtsi"
+#include "panel-j-wuxga-7.dtsi"
 #include "tegra124-platforms/tegra124-yellowstone-hdmi.dtsi"
 #include <dt-bindings/iio/meter/ina3221x.h>
 #include "tegra124-platforms/tegra124-yellowstone-comms.dtsi"
