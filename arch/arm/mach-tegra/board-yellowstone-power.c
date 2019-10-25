@@ -311,24 +311,22 @@ static void yellowstone_charger_init(void)
 {
 	int ret = 0;
 
-	if (get_power_supply_type() == POWER_SUPPLY_TYPE_BATTERY) {
-		ret = gpio_request(TEGRA_GPIO_PK5, "bq2477x-charger");
-		if (ret < 0) {
-			pr_err("%s: charger_enable TEGRA_GPIO_PK5 request failed\n",
+	ret = gpio_request(TEGRA_GPIO_PK5, "bq2477x-charger");
+	if (ret < 0) {
+		pr_err("%s: charger_enable TEGRA_GPIO_PK5 request failed\n",
+			__func__);
+	} else {
+		ret = gpio_direction_output(TEGRA_GPIO_PK5, 1);
+		if (ret < 0)
+			pr_err("%s: TEGRA_GPIO_PK5 direction failed\n",
 				__func__);
-		} else {
-			ret = gpio_direction_output(TEGRA_GPIO_PK5, 1);
-			if (ret < 0)
-				pr_err("%s: TEGRA_GPIO_PK5 direction failed\n",
-					__func__);
-		}
-		msleep(20);
-
-		platform_device_register(&yellowstone_bq2477x_extcon);
-
-		i2c_register_board_info(1, bq2477x_boardinfo,
-			ARRAY_SIZE(bq2477x_boardinfo));
 	}
+
+	msleep(20);
+
+	platform_device_register(&yellowstone_bq2477x_extcon);
+	i2c_register_board_info(1, bq2477x_boardinfo,
+		ARRAY_SIZE(bq2477x_boardinfo));
 }
 
 int __init yellowstone_rail_alignment_init(void)
