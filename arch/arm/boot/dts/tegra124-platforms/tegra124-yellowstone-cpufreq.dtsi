@@ -1,0 +1,36 @@
+/*
+ * Copyright (c) 2015 NVIDIA CORPORATION. All rights reserved.
+ *
+ * This software is licensed under the terms of the GNU General Public
+ * License version 2, as published by the Free Software Foundation, and
+ * may be copied, distributed, and modified under those terms.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ */
+
+/ {
+	cpufreq {
+		compatible = "nvidia,tegra124-cpufreq";
+		emc-scaling-data {
+			emc-cpu-limit-table = <
+				/* CPU    EMC */
+				51000   12750
+				312000  20400
+				564000  40800
+				696000  68000
+				828000  102000
+				960000  204000
+				1044000 300000
+				1224000 396000
+				1326000 528000
+				1734000 600000
+						792000
+						924000
+				>;
+		};
+	};
+};

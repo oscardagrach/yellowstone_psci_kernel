@@ -1,0 +1,65 @@
+/*
+ * arch/arm/boot/dts/tegra124-platforms/tegra124-yellowstone-sysedp-p1780-1000-a02.dtsi
+ *
+ * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+
+/ {
+	sysedp_batmon_calc {
+		status = "disabled";
+		compatible = "nvidia,tegra124-sysedp_batmon_calc";
+		ocv_lut = <
+			100 8372010
+			95 8163880
+			90 8069280
+			85 7970700
+			80 7894100
+			75 7820860
+			70 7751890
+			65 7691770
+			60 7641110
+			55 7598990
+			50 7564200
+			45 7534290
+			40 7511410
+			35 7491870
+			30 7468380
+			25 7435720
+			20 7388720
+			15 7338370
+			10 7219650
+			0 5999850
+		>;
+		ibat_lut = <
+			600 9750
+			(-300) 9750
+			0 0
+		>;
+		rbat_data = <
+			100000 120000 140000 170000 190000 210000
+			100000 120000 150000 170000 190000 210000
+			100000 130000 150000 170000 200000 210000
+			110000 130000 160000 170000 200000 210000
+			120000 140000 170000 180000 210000 220000
+		>;
+		temp_axis = <450 230 100 50 0 (-200)>;
+		capacity_axis = <100 55 50 10 0>;
+		power_supply = "battery";
+		r_const = <70000>;
+		vsys_min = <5880000>;
+	};
+};
