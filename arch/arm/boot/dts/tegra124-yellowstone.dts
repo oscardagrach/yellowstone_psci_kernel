@@ -1,0 +1,179 @@
+/*
+ * arch/arm/boot/dts/tegra124-yellowstone-p1780-1000-a02.dts
+ *
+ * Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+
+/dts-v1/;
+
+#include "tegra124-yellowstone.dtsi"
+#include "tegra124-platforms/tegra124-yellowstone-emc.dtsi"
+#include "tegra124-platforms/tegra124-yellowstone-power-tree.dtsi"
+#include "tegra124-platforms/tegra124-yellowstone-sensors.dtsi"
+#include "tegra124-platforms/tegra124-yellowstone-pinmux.dtsi"
+#include "tegra124-platforms/tegra124-yellowstone-gpio.dtsi"
+#include "tegra124-platforms/tegra124-yellowstone-keys.dtsi"
+//#include "tegra124-platforms/tegra124-yellowstone-sysedp.dtsi"
+#include "tegra124-platforms/tegra124-yellowstone-powermon.dtsi"
+#include "tegra124-platforms/tegra124-yellowstone-dfll.dtsi"
+//#include "panel-j-wuxga-7.dtsi"
+#include "tegra124-platforms/tegra124-yellowstone-hdmi.dtsi"
+#include <dt-bindings/iio/meter/ina3221x.h>
+#include "tegra124-platforms/tegra124-yellowstone-comms.dtsi"
+
+/ {
+	model = "NVIDIA Tegra124 Yellowstone";
+	compatible = "nvidia,yellowstone", "nvidia,tegra124";
+	nvidia,dtsfilename = __FILE__;
+	#address-cells = <2>;
+	#size-cells = <2>;
+
+	chosen {
+		bootargs = "tegraid=40.0.0.00.00 vmalloc=256M video=tegrafb console=ttyS0,115200n8 earlyprintk";
+		linux,initrd-start = <0x85000000>;
+		linux,initrd-end = <0x851bc400>;
+
+		proc-board {
+			id = <0x06f4>;
+			sku = <0x2>;
+			fab = <0xe8>;
+			major_revision = <0x29>;
+			minor_revision = <0x0>;
+		};
+		pmu-board {
+			id = <0x06c7>;
+			sku = <0x03e9>;
+			fab = <0x01>;
+			major_revision = <0x43>;
+			minor_revision = <0x02>;
+		};
+		display-board {
+			id = <0x065b>;
+			sku = <0x0>;
+			fab = <0x0>;
+			major_revision = <0x0>;
+			minor_revision = <0x0>;
+		};
+	};
+
+	firmware {
+		android {
+			compatible = "android,firmware";
+			hardware = "yellowstone";
+			fstab {
+				compatible = "android,fstab";
+				system {
+					compatible = "android,system";
+					dev = "/dev/block/platform/sdhci-tegra.3/by-name/APP";
+					type = "ext4";
+					mnt_flags = "ro";
+					fsmgr_flags = "wait";
+				};
+			};
+		};
+	};
+
+	memory@0x80000000 {
+		device_type = "memory";
+		reg = <0x0 0x80000000 0x0 0x80000000>;
+	};
+
+	host1x {
+		/* tegradc.0 */
+		dc@54200000 {
+			status = "okay";
+			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
+			nvidia,emc-clk-rate = <204000000>;
+			nvidia,cmu-enable = <1>;
+			nvidia,low-v-win = <0x2>;
+			nvidia,fb-bpp = <32>; /* bits per pixel */
+			nvidia,fb-flags = <TEGRA_FB_FLIP_ON_PROBE>;
+		};
+		/* tegradc.1 */
+		dc@54240000 {
+			status = "okay";
+			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
+			nvidia,emc-clk-rate = <300000000>;
+			nvidia,fb-bpp = <32>; /* bits per pixel */
+			nvidia,fb-flags = <TEGRA_FB_FLIP_ON_PROBE>;
+		};
+		dsi {
+			nvidia,dsi-controller-vs = <DSI_VS_1>;
+			status = "okay";
+			panel-j-wuxga-7 {
+				nvidia,dsi-boardinfo = <1627 0 0 0>;
+				nvidia,panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(H, 1) 0>; /* PH1 */
+				nvidia,panel-rst-gpio = <&gpio TEGRA_GPIO(H, 3) 0>; /* PH3 */
+			};
+		};
+	};
+
+	i2c@7000c000 {
+		rt5640: rt5640@1c {
+			compatible = "realtek,rt5639";
+			reg = <0x1c>;
+		};
+	};
+
+	backlight {
+		status = "okay";
+		compatible = "pwm-backlight";
+		panel-j-wuxga-7 {
+			nvidia,panel-rst-gpio = <&gpio TEGRA_GPIO(H, 3) 0>;
+			nvidia,panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(H, 1) 0>;
+			nvidia,dsi-te-gpio = <&gpio TEGRA_GPIO(R, 6) 0>;
+		};
+	};
+
+	sound {
+		compatible = "nvidia,tegra-audio-rt5639";
+		nvidia,codec_name = "rt5639.0-001c";
+		nvidia,codec_dai_name = "rt5639-aif1";
+		nvidia,ldo-gpios = <&gpio TEGRA_GPIO(R, 2) 0>;
+		nvidia,hp-det-gpios = <&gpio TEGRA_GPIO(H, 4) 0>;
+		nvidia,use_codec_jd_irq = <1>;
+		nvidia,i2s-param-hifi = <1 1 2 16 48000 2 1536000>;
+		nvidia,i2s-param-bt = <3 1 0 16 8000 1 512000>;
+		nvidia,i2s-param-baseband = <0 1 2 16 16000 2 1024000>;
+	};
+
+	i2c@7000c400 {
+		status = "okay";
+		clock-frequency = <100000>;
+
+		bq28z610@55 {
+			compatible = "ti,bq28z610";
+			reg = <0x55>;
+			tz-name = "battery-temp";
+			alert-threshold = <0x0>;
+			one-percent-alerts = <0x1>;
+			valert-max = <0x13ec>;
+			valert-min = <0x0>;
+			vreset-threshold = <0x960>;
+			vreset-disable = <0x1>;
+			hib-threshold = <0x30>;
+			hib-active-threshold = <0x80>;
+			bits = <0x12>;
+			rcomp = <0x39>;
+			rcomp-seg = <0x200>;
+			soccheck-a = <0x77>;
+			soccheck-b = <0x79>;
+			ocvtest = <0xda90>;
+			data-tbl = <0x98 0x80 0xb3 0x50 0xb7 0x90 0xb9 0x0 0xba 0x70 0xbc 0x10 0xbc 0x50 0xbc 0xa0 0xbd 0x20 0xbe 0x30 0xbf 0x40 0xc2 0xf0 0xc4 0x20 0xc7 0xe0 0xcb 0xf0 0xd0 0x90 0x0 0x40 0x6 0x70 0xe 0x50 0x12 0x0 0x18 0xd0 0x33 0x10 0x31 0x40 0x35 0xd0 0x18 0xd0 0x19 0x0 0xb 0xf0 0xc 0x10 0xd 0x10 0x7 0x90 0x8 0x0 0x8 0x0>;
+		};
+	};
+};
