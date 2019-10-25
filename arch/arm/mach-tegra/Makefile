@@ -18,6 +18,7 @@ GCOV_PROFILE_panel-s-edp-wqxgap-15-6.o := n
 GCOV_PROFILE_panel-s-wqxga-10-1.o := n
 GCOV_PROFILE_panel-s-wuxga-7-0.o := n
 GCOV_PROFILE_panel-s-wuxga-8-0.o := n
+GCOV_PROFILE_panel-j-wuxga-7.o := n
 
 
 asflags-y				+= -march=armv7-a
@@ -110,6 +111,7 @@ obj-y                                   += panel-l-720p-5-loki.o
 obj-y                                   += panel-s-edp-uhdtv-15-6.o
 obj-y                                   += panel-o-720p-6-0.o
 obj-y                                   += panel-o-720p-6-0-01.o
+obj-y									+= panel-j-wuxga-7.o
 
 obj-${CONFIG_MACH_ARDBEG}               += board-ardbeg.o
 obj-${CONFIG_MACH_ARDBEG}               += board-ardbeg-sdhci.o
@@ -128,6 +130,7 @@ obj-${CONFIG_MACH_YELLOWSTONE}          += board-yellowstone.o
 obj-${CONFIG_MACH_YELLOWSTONE}          += board-yellowstone-sdhci.o
 obj-${CONFIG_MACH_YELLOWSTONE}          += board-yellowstone-sensors.o
 obj-${CONFIG_MACH_YELLOWSTONE}          += board-yellowstone-power.o
+obj-${CONFIG_MACH_YELLOWSTONE}          += panel-j-wuxga-7.o
 
 obj-${CONFIG_MACH_LOKI}               	+= board-loki.o
 obj-${CONFIG_MACH_LOKI}               	+= board-loki-kbc.o
