@@ -466,16 +466,6 @@ static struct tegra_spi_device_controller_data maxim_dev_cdata = {
 	.tx_clk_tap_delay = 0,
 };
 
-struct spi_board_info maxim_sti_spi_board = {
-	.modalias = MAXIM_STI_NAME,
-	.bus_num = TOUCH_SPI_ID,
-	.chip_select = TOUCH_SPI_CS,
-	.max_speed_hz = 12 * 1000 * 1000,
-	.mode = SPI_MODE_0,
-	.platform_data = &maxim_sti_pdata,
-	.controller_data = &maxim_dev_cdata,
-};
-
 static struct rm_spi_ts_platform_data rm31080ts_yellowstone_data = {
 	.gpio_reset = TOUCH_GPIO_RST_RAYDIUM_SPI,
 	.config = 0,
