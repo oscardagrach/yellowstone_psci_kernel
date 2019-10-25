@@ -180,7 +180,6 @@ static int dsi_j_wuxga_7_enable(struct device *dev)
 	msleep(20);
 #endif
 
-	pr_info("%s:%d --\n", __func__, __LINE__);
 	return 0;
 
 fail:
@@ -216,7 +215,6 @@ static int dsi_j_wuxga_7_disable(struct device *dev)
 		err = regulator_disable(dvdd_lcd_1v8);
 	WARN(err, "%s:%d: LCM regulator disable dvdd_lcd_1v8 fail", __func__, __LINE__);
 
-	pr_info("%s:%d --\n", __func__, __LINE__);
 	return 0;
 }
 
