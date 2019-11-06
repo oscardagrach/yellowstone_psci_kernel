@@ -18,6 +18,14 @@
 #include <dt-bindings/gpio/tegra-gpio.h>
 
 / {
+	i2c@7000c000 {
+		cm3217@10 {
+			compatible = "capella,cm3217-siio";
+			reg = <0x10>;
+			vdd-supply = <&palmas_ti913_regen1>;
+		};
+	};
+
 	i2c@7000c400 {
 		status = "okay";
 
