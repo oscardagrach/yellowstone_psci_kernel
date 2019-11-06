@@ -135,6 +135,12 @@
 		compatible = "pwm-backlight";
 	};
 
+	vibrator {
+		status = "okay";
+		compatible = "nvidia,vibrator";
+		vdd-vbrtr-supply = <&ldo6_reg>;
+	};
+
 	sound {
 		compatible = "nvidia,tegra-audio-rt5639";
 		nvidia,codec_name = "rt5639.0-001c";
