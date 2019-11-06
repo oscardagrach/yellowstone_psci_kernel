@@ -330,24 +330,16 @@ static void yellowstone_usb_init(void)
 
 	if (!(usb_port_owner_info & UTMI2_PORT_OWNER_XUSB)) {
 		if (!modem_id) {
-			if ((bi.board_id != BOARD_P1761) &&
-			    (bi.board_id != BOARD_E1922) &&
-			    (bi.board_id != BOARD_E1784)) {
-				tegra_ehci2_device.dev.platform_data =
-					&tegra_ehci2_utmi_pdata;
-				platform_device_register(&tegra_ehci2_device);
-			}
+			tegra_ehci2_device.dev.platform_data =
+				&tegra_ehci2_utmi_pdata;
+			platform_device_register(&tegra_ehci2_device);
 		}
 	}
 
 	if (!(usb_port_owner_info & UTMI2_PORT_OWNER_XUSB)) {
-		if ((bi.board_id != BOARD_P1761) &&
-		    (bi.board_id != BOARD_E1922) &&
-		    (bi.board_id != BOARD_E1784)) {
-			tegra_ehci3_device.dev.platform_data =
-				&tegra_ehci3_utmi_pdata;
-			platform_device_register(&tegra_ehci3_device);
-		}
+		tegra_ehci3_device.dev.platform_data =
+			&tegra_ehci3_utmi_pdata;
+		platform_device_register(&tegra_ehci3_device);
 	}
 }
 
