@@ -91,11 +91,83 @@
 #include "tegra-board-id.h"
 #include "tegra-of-dev-auxdata.h"
 
+#include <linux/proc_fs.h>
+#include <linux/seq_file.h>
+
 static struct board_info board_info, display_board_info;
 
 /* 6 == PVT, production */
-int cci_hw_id = 6;
+int cci_hw_id = 0;
 int ccibootmode = 0;
+
+int get_cci_hw_id(void)
+{
+    return cci_hw_id;
+}
+
+char *get_cci_hw_id_string(void)
+{
+    switch (get_cci_hw_id()){
+    case EVT:
+        return "EVT";
+        break;
+    case DVT_DEMO:
+        return "DVT_DEMO";
+        break;
+    case DVT1_1:
+        return "DVT1_1";
+        break;
+    case DVT1_2:
+        return "DVT1_2";
+        break;
+    case DVT2:
+        return "DVT2";
+        break;
+    case DVT3:
+        return "DVT3";
+        break;
+    case PVT:
+        return "PVT";
+        break;
+    default:
+        return "HWID_INVALID";
+        break;
+    }
+}
+
+static int cci_hwid_show(struct seq_file *m, void *v)
+{
+
+    switch(cci_hw_id) {
+        case EVT:
+            seq_printf(m, "%s\n", "EVT");
+            break;
+        case DVT_DEMO:
+            seq_printf(m, "%s\n", "DVT_DEMO");
+            break;
+        case DVT1_1:
+            seq_printf(m, "%s\n", "DVT1_1");
+            break;
+        case DVT1_2:
+            seq_printf(m, "%s\n", "DVT1_2");
+            break;
+        case DVT2:
+            seq_printf(m, "%s\n", "DVT2");
+            break;
+        case DVT3:
+            seq_printf(m, "%s\n", "DVT3");
+            break;
+        case PVT:
+            seq_printf(m, "%s\n", "PVT");
+            break;
+        default:
+            seq_printf(m, "%s\n", "HWID_INVALID");
+            printk("Got an invalid HWIID %d\n", cci_hw_id);
+            break;
+    }
+
+    return 0;
+}
 
 static __initdata struct tegra_clk_init_table yellowstone_clk_init_table[] = {
 	/* name		parent		rate		enabled */
@@ -631,6 +703,17 @@ static void __init tegra_yellowstone_init_early(void)
 	tegra12x_init_early();
 }
 
+static int ccihwid_proc_open(struct inode *inode, struct file *file)
+{
+    return single_open(file, cci_hwid_show, NULL);
+}
+
+static const struct file_operations ccihwid_proc_fops = {
+    .owner      = THIS_MODULE,
+    .open       = ccihwid_proc_open,
+    .read       = seq_read,
+};
+
 static int tegra_yellowstone_notifier_call(struct notifier_block *nb,
 				    unsigned long event, void *data)
 {
@@ -660,6 +743,10 @@ static struct notifier_block platform_nb = {
 
 static void __init tegra_yellowstone_dt_init(void)
 {
+	struct proc_dir_entry *ccihwid_entry;
+
+	ccihwid_entry = proc_create("CCI_HW_ID", 0664, NULL, &ccihwid_proc_fops);
+
 	regulator_has_full_constraints();
 
 	tegra_get_board_info(&board_info);
