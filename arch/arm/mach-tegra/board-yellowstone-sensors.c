@@ -48,20 +48,6 @@
 #include "board-yellowstone.h"
 #include "tegra-board-id.h"
 
-/** proximity sensor */
-static struct cm3217_platform_data yellowstone_cm3217_pdata = {
-	.levels = {10, 160, 225, 320, 640, 1280, 2600, 5800, 8000, 10240},
-	.golden_adc = 0,
-	.power = 0,
-};
-
-static struct i2c_board_info yellowstone_i2c_cm3217_board_info[] = {
-	{
-		I2C_BOARD_INFO("cm3217", 0x10),
-		.platform_data = &yellowstone_cm3217_pdata,
-	},
-};
-
 static struct pid_thermal_gov_params cpu_pid_params = {
 	.max_err_temp = 4000,
 	.max_err_gain = 1000,
@@ -209,9 +195,6 @@ int __init yellowstone_sensors_init(void)
 {
 	/* yellowstone_camera_init(); */
 	yellowstone_nct72_init();
-	i2c_register_board_info
-		(0, yellowstone_i2c_cm3217_board_info,
-			ARRAY_SIZE(yellowstone_i2c_cm3217_board_info));
 
 	return 0;
 }
