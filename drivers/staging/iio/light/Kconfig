@@ -139,6 +139,17 @@ config SENSORS_IQS253
 	  This driver uses I2C to program the device.
 	  This communicates proximity events to SAR sensor through gpio.
 
+config SENSORS_IQS253_YS
+	tristate "IQS253 capacitive sensor (Yellowstone)"
+	depends on I2C
+	select LS_OF
+	select LS_SYFS
+	default n
+	help
+	  Say Y to enable proximity detection using IQS253 capacitive sensor.
+	  This driver uses I2C to program the device. For Yellowstone HW.
+	  This communicates proximity events to SAR sensor through gpio.
+
 config SENSORS_IQS253_AS_PROXIMITY
 	tristate "Use IQS253 capacitive sensor for proximity detection"
 	depends on I2C
