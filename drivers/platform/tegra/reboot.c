@@ -32,6 +32,8 @@
 #define NEVER_RESET		0
 #define RECOVERY_MODE		BIT(31)
 #define BOOTLOADER_MODE		BIT(30)
+#define CCI_T2_MODE	BIT(29)
+#define CCI_T1_MODE	BIT(28)
 #define FORCED_RECOVERY_MODE	BIT(1)
 
 #define SYS_RST_OK		1
@@ -48,7 +50,8 @@ static int program_reboot_reason(const char *cmd)
 
 	/* clean up */
 	reg = readl_relaxed(reset + PMC_SCRATCH0);
-	reg &= ~(BOOTLOADER_MODE | RECOVERY_MODE | FORCED_RECOVERY_MODE);
+	reg &= ~(BOOTLOADER_MODE | RECOVERY_MODE |
+			FORCED_RECOVERY_MODE | CCI_T1_MODE | CCI_T2_MODE);
 	writel_relaxed(reg, reset + PMC_SCRATCH0);
 
 	/* valid command? */
@@ -62,6 +65,10 @@ static int program_reboot_reason(const char *cmd)
 		reg |= BOOTLOADER_MODE;
 	else if (!strcmp(cmd, "forced-recovery"))
 		reg |= FORCED_RECOVERY_MODE;
+	else if (!strcmp(cmd, "cci_t1"))
+		reg |= CCI_T1_MODE;
+	else if (!strcmp(cmd, "cci_t2"))
+		reg |= CCI_T2_MODE;
 
 	/* write the restart command */
 	writel_relaxed(reg, reset + PMC_SCRATCH0);
