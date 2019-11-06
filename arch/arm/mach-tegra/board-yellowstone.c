@@ -82,7 +82,6 @@
 #include "board-common.h"
 #include "board-panel.h"
 #include "board-touch-raydium.h"
-#include "board-touch-maxim_sti.h"
 #include <linux/platform/tegra/clock.h>
 #include <linux/platform/tegra/common.h>
 #include "devices.h"
@@ -431,40 +430,6 @@ static struct of_dev_auxdata yellowstone_auxdata_lookup[] __initdata = {
 	{}
 };
 #endif
-
-struct maxim_sti_pdata maxim_sti_pdata = {
-	.touch_fusion         = "/vendor/bin/touch_fusion",
-	.config_file          = "/vendor/firmware/touch_fusion.cfg",
-	.fw_name              = "maxim_fp35.bin",
-	.nl_family            = TF_FAMILY_NAME,
-	.nl_mc_groups         = 5,
-	.chip_access_method   = 2,
-	.default_reset_state  = 0,
-	.tx_buf_size          = 4100,
-	.rx_buf_size          = 4100,
-	.gpio_reset           = TOUCH_GPIO_RST_MAXIM_STI_SPI,
-	.gpio_irq             = TOUCH_GPIO_IRQ_MAXIM_STI_SPI
-};
-
-struct maxim_sti_pdata maxim_sti_pdata_rd = {
-	.touch_fusion         = "/vendor/bin/touch_fusion_rd",
-	.config_file          = "/vendor/firmware/touch_fusion.cfg",
-	.fw_name              = "maxim_fp35.bin",
-	.nl_family            = TF_FAMILY_NAME,
-	.nl_mc_groups         = 5,
-	.chip_access_method   = 2,
-	.default_reset_state  = 0,
-	.tx_buf_size          = 4100,
-	.rx_buf_size          = 4100,
-	.gpio_reset           = TOUCH_GPIO_RST_MAXIM_STI_SPI,
-	.gpio_irq             = TOUCH_GPIO_IRQ_MAXIM_STI_SPI
-};
-
-static struct tegra_spi_device_controller_data maxim_dev_cdata = {
-	.rx_clk_tap_delay = 0,
-	.is_hw_based_cs = true,
-	.tx_clk_tap_delay = 0,
-};
 
 static struct rm_spi_ts_platform_data rm31080ts_yellowstone_data = {
 	.gpio_reset = TOUCH_GPIO_RST_RAYDIUM_SPI,
