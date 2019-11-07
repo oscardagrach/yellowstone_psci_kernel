@@ -170,15 +170,15 @@ static int dsi_j_wuxga_7_enable(struct device *dev)
 	}
 	msleep(5);
 
-#if DSI_PANEL_RESET
-	// RESET L->H
-	gpio_direction_output(GPIO_PANEL_RST, 0);
-	usleep_range(1000, 5000);
-	gpio_set_value(GPIO_PANEL_RST, 0);
-	msleep(150);
-	gpio_set_value(GPIO_PANEL_RST, 1);
-	msleep(20);
-#endif
+	if (!tegra_dc_initialized(dev)) {
+		// RESET L->H
+		gpio_direction_output(GPIO_PANEL_RST, 0);
+		usleep_range(1000, 5000);
+		gpio_set_value(GPIO_PANEL_RST, 0);
+		msleep(150);
+		gpio_set_value(GPIO_PANEL_RST, 1);
+		msleep(20);
+	}
 
 	return 0;
 
