@@ -139,21 +139,22 @@ static int cm3217_i2c_wr(struct cm3217_inf *inf, __u8 cmd1, __u8 cmd2)
 	return 0;
 }
 
-static int cm3217_cmd_wr(struct cm3217_inf *inf, __u8 it_t, __u8 fd_it)
+static int cm3217_cmd_wr(struct cm3217_inf *inf, __u8 it_t,
+		__u8 fd_it, int sd_mode)
 {
 	__u8 cmd1;
 	__u8 cmd2;
 	int err;
 
 	cmd1 = (CM3217_HW_CMD1_DFLT);
-	if (!inf->als_state)
+	if (sd_mode)
 		cmd1 |= (1 << CM3217_HW_CMD1_BIT_SD);
 	cmd1 |= (it_t << CM3217_HW_CMD1_BIT_IT_T);
 	cmd2 = fd_it << CM3217_HW_CMD2_BIT_FD_IT;
 	err = cm3217_i2c_wr(inf, cmd1, cmd2);
 	return err;
 }
-
+#ifndef CONFIG_MACH_YELLOWSTONE
 static int cm3217_vreg_dis(struct cm3217_inf *inf, unsigned int i)
 {
 	int err = 0;
@@ -249,7 +250,7 @@ static int cm3217_vreg_init(struct cm3217_inf *inf)
 		inf->vreg[i].consumer = NULL;
 	return err;
 }
-
+#endif
 static ssize_t cm3217_chan_regulator_enable_show(struct device *dev,
 				struct device_attribute *attr, char *buf)
 {
@@ -279,7 +280,12 @@ static ssize_t cm3217_chan_regulator_enable(struct device *dev,
 
 	if (enable == (inf->als_state != CHIP_POWER_OFF))
 		return 1;
+#ifdef CONFIG_MACH_YELLOWSTONE
+	inf->als_state = enable;
 
+	return ret ? ret : 1;
+#endif
+#ifndef CONFIG_MACH_YELLOWSTONE
 	if (!inf->vreg)
 		goto success;
 
@@ -298,9 +304,10 @@ static ssize_t cm3217_chan_regulator_enable(struct device *dev,
 success:
 	inf->als_state = enable;
 	if (!enable && regulator_is_enabled(inf->vreg[0].consumer))
-		cm3217_cmd_wr(inf, 0, 0);
+		cm3217_cmd_wr(inf, 0, 0, 0);
 fail:
 	return ret ? ret : 1;
+#endif
 }
 
 static void cm3217_work(struct work_struct *ws)
@@ -347,11 +354,12 @@ static ssize_t cm3217_enable_store(struct device *dev,
 
 	mutex_lock(&indio_dev->mlock);
 	if (enable) {
-		err = cm3217_cmd_wr(inf, 0, 0);
+		err = cm3217_cmd_wr(inf, 0, 0, 0);
 		inf->raw_illuminance_val = -EINVAL;
 		queue_delayed_work(inf->wq, &inf->dw, CM3217_HW_DELAY);
 	} else {
 		cancel_delayed_work_sync(&inf->dw);
+		err = cm3217_cmd_wr(inf, 0, 0, 1);
 	}
 	mutex_unlock(&indio_dev->mlock);
 	if (err)
@@ -683,14 +691,56 @@ static const struct iio_info cm3217_iio_info = {
 	.driver_module = THIS_MODULE
 };
 
+#ifdef CONFIG_PM_SLEEP
+static int cm3217_suspend(struct device *dev)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct iio_dev *indio_dev = i2c_get_clientdata(client);
+	struct cm3217_inf *inf = iio_priv(indio_dev);
+	int ret = 0;
+
+	if (inf->als_state == CHIP_POWER_ON_ALS_ON)
+		ret = cm3217_cmd_wr(inf, 0, 0, 1);
+	if (ret)
+		dev_err(&client->adapter->dev,
+				"%s err in cm3217 write\n", __func__);
+
+	return ret;
+}
+
+static int cm3217_resume(struct device *dev)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct iio_dev *indio_dev = i2c_get_clientdata(client);
+	struct cm3217_inf *inf = iio_priv(indio_dev);
+	int ret = 0;
+
+	if (inf->als_state == CHIP_POWER_ON_ALS_ON)
+		ret = cm3217_cmd_wr(inf, 0, 0, 0);
+	if (ret)
+		dev_err(&client->adapter->dev,
+				"%s err in cm3217 write\n", __func__);
+
+	return ret;
+}
+
+static SIMPLE_DEV_PM_OPS(cm3217_pm_ops, cm3217_suspend, cm3217_resume);
+#define CM3217_PM_OPS (&cm3217_pm_ops)
+#else
+#define CM3217_PM_OPS NULL
+#endif
+
 static int cm3217_remove(struct i2c_client *client)
 {
 	struct iio_dev *indio_dev = i2c_get_clientdata(client);
 	struct cm3217_inf *inf = iio_priv(indio_dev);
-
+#ifndef CONFIG_MACH_YELLOWSTONE
 	iio_device_unregister(indio_dev);
+#endif
 	destroy_workqueue(inf->wq);
+#ifndef CONFIG_MACH_YELLOWSTONE
 	cm3217_vreg_exit(inf);
+#endif
 	iio_device_free(indio_dev);
 	dev_dbg(&client->adapter->dev, "%s\n", __func__);
 	return 0;
@@ -729,15 +779,20 @@ static int cm3217_probe(struct i2c_client *client,
 	}
 
 	inf->i2c = client;
+#ifndef CONFIG_MACH_YELLOWSTONE
 	err = cm3217_vreg_init(inf);
 	if (err) {
 		dev_info(&client->dev,
 			"%s regulator init failed, assume always on", __func__);
 		goto err_vreg_init;
 	}
-
+#endif
 	INIT_DELAYED_WORK(&inf->dw, cm3217_work);
+#ifdef CONFIG_MACH_YELLOWSTONE
+	inf->als_state = CHIP_POWER_ON_ALS_OFF;
+#else
 	inf->als_state = 0;
+#endif
 
 	i2c_set_clientdata(client, indio_dev);
 	indio_dev->info = &cm3217_iio_info;
@@ -747,15 +802,20 @@ static int cm3217_probe(struct i2c_client *client,
 	err = iio_device_register(indio_dev);
 	if (err) {
 		dev_err(&client->dev, "%s iio_device_register err\n", __func__);
+#ifdef CONFIG_MACH_YELLOWSTONE
+		goto err_vreg_init;
+#else
 		goto err_iio_register;
+#endif
 	}
 
 	inf->raw_illuminance_val = -EINVAL;
 	dev_info(&client->dev, "%s success\n", __func__);
 	return 0;
-
+#ifndef CONFIG_MACH_YELLOWSTONE
 err_iio_register:
 	cm3217_vreg_exit(inf);
+#endif
 err_vreg_init:
 	destroy_workqueue(inf->wq);
 err_wq:
@@ -766,12 +826,17 @@ err_wq:
 
 static void cm3217_shutdown(struct i2c_client *client)
 {
+#ifdef CONFIG_MACH_YELLOWSTONE
+	cm3217_remove(client);
+#else
 	struct iio_dev *indio_dev = i2c_get_clientdata(client);
 	struct cm3217_inf *inf = iio_priv(indio_dev);
+
 	inf->als_state = CHIP_POWER_OFF;
 	smp_wmb();
 	cancel_delayed_work_sync(&inf->dw);
 	cm3217_vreg_exit(inf);
+#endif
 }
 
 static const struct i2c_device_id cm3217_i2c_device_id[] = {
@@ -797,6 +862,9 @@ static struct i2c_driver cm3217_driver = {
 		.name	= "cm3217",
 		.owner	= THIS_MODULE,
 		.of_match_table = of_match_ptr(cm3217_of_match),
+#ifdef CONFIG_MACH_YELLOWSTONE
+		.pm = CM3217_PM_OPS,
+#endif
 	},
 	.shutdown = cm3217_shutdown,
 };
