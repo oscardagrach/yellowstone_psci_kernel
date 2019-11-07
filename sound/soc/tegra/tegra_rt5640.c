@@ -49,7 +49,7 @@
 #include <sound/pcm_params.h>
 #include <sound/soc.h>
 #include "../codecs/rt5639.h"
-#include "../codecs/rt5640.h"
+#include "../codecs/rt5640_ys.h"
 
 #include "tegra_pcm.h"
 #include "tegra_asoc_utils.h"
@@ -57,7 +57,11 @@
 #include "tegra30_ahub.h"
 #include "tegra30_i2s.h"
 
+#ifdef CONFIG_MACH_YELLOWSTONE
+#define DRV_NAME "tegra-snd-rt5639"
+#else
 #define DRV_NAME "tegra-snd-rt5640"
+#endif
 
 #define DAI_LINK_HIFI			0
 #define DAI_LINK_SPDIF			1
@@ -414,7 +418,11 @@ static int tegra_rt5640_jack_notifier(struct notifier_block *self,
 			if (gpio_is_valid(pdata->gpio_ext_mic_en))
 				gpio_direction_output(pdata->gpio_ext_mic_en, 0);
 			if (!strncmp(machine->pdata->codec_name, "rt5639", 6))
+#ifdef CONFIG_MACH_YELLOWSTONE
+				status_jack = rt5640_headset_detect(codec, 1);
+#else
 				status_jack = rt5639_headset_detect(codec, 1);
+#endif
 			else if (!strncmp(machine->pdata->codec_name, "rt5640",
 									    6))
 				status_jack = rt5640_headset_detect(codec, 1);
@@ -437,7 +445,11 @@ static int tegra_rt5640_jack_notifier(struct notifier_block *self,
 			if (gpio_is_valid(pdata->gpio_ext_mic_en))
 				gpio_direction_output(pdata->gpio_ext_mic_en, 1);
 			if (!strncmp(machine->pdata->codec_name, "rt5639", 6))
+#ifdef CONFIG_MACH_YELLOWSTONE
+				rt5640_headset_detect(codec, 0);
+#else
 				rt5639_headset_detect(codec, 0);
+#endif
 			else if (!strncmp(machine->pdata->codec_name, "rt5640",
 									    6))
 				rt5640_headset_detect(codec, 0);
