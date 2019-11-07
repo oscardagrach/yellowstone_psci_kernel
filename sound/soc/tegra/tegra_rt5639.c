@@ -41,7 +41,12 @@
 #include <sound/pcm.h>
 #include <sound/pcm_params.h>
 #include <sound/soc.h>
+#ifdef CONFIG_MACH_YELLOWSTONE
 #include "../codecs/rt5639.h"
+#include "../codecs/rt5640_ys.h"
+#else
+#include "../codecs/rt5639.h"
+#endif
 
 #include "tegra_pcm.h"
 #include "tegra_asoc_utils.h"
@@ -49,7 +54,11 @@
 #include "tegra30_ahub.h"
 #include "tegra30_i2s.h"
 
+#ifdef CONFIG_MACH_YELLOWSTONE
+#define DRV_NAME "tegra-snd-rt5640"
+#else
 #define DRV_NAME "tegra-snd-rt5639"
+#endif
 
 #define DAI_LINK_HIFI		0
 #define DAI_LINK_SPDIF		1
@@ -761,8 +770,11 @@ static int tegra_rt5639_jack_notifier(struct notifier_block *self,
 				gpio_direction_output(
 				pdata->gpio_ext_mic_en, 0);
 
+#ifdef CONFIG_MACH_YELLOWSTONE
+			status_jack = rt5640_headset_detect(codec, 1);
+#else
 			status_jack = rt5639_headset_detect(codec, 1);
-
+#endif
 			machine->jack_status &= ~SND_JACK_HEADPHONE;
 			machine->jack_status &= ~SND_JACK_MICROPHONE;
 
@@ -781,7 +793,11 @@ static int tegra_rt5639_jack_notifier(struct notifier_block *self,
 				gpio_direction_output(
 				pdata->gpio_ext_mic_en, 1);
 
+#ifdef CONFIG_MACH_YELLOWSTONE
+			rt5640_headset_detect(codec, 0);
+#else
 			rt5639_headset_detect(codec, 0);
+#endif
 
 			machine->jack_status &= ~SND_JACK_HEADPHONE;
 			machine->jack_status &= ~SND_JACK_MICROPHONE;
@@ -993,6 +1009,17 @@ static int tegra_rt5639_init(struct snd_soc_pcm_runtime *rtd)
 
 static struct snd_soc_dai_link tegra_rt5639_dai[NUM_DAI_LINKS] = {
 	[DAI_LINK_HIFI] = {
+#ifdef CONFIG_MACH_YELLOWSTONE
+		.name = "rt5640",
+		.stream_name = "rt5640 PCM",
+		.codec_name = "rt5640.0-001a",
+		.platform_name = "tegra-pcm-audio",
+		.cpu_dai_name = "tegra30-i2s.1",
+		.codec_dai_name = "rt5640-aif1",
+		.init = tegra_rt5639_init,
+		.ops = &tegra_rt5639_ops,
+		.ignore_pmdown_time = 1,
+#else
 		.name = "rt5639",
 		.stream_name = "rt5639 PCM",
 		.codec_name = "rt5639.0-001a",
@@ -1002,6 +1029,7 @@ static struct snd_soc_dai_link tegra_rt5639_dai[NUM_DAI_LINKS] = {
 		.init = tegra_rt5639_init,
 		.ops = &tegra_rt5639_ops,
 		.ignore_pmdown_time = 1,
+#endif
 	},
 
 	[DAI_LINK_SPDIF] = {
@@ -1024,6 +1052,15 @@ static struct snd_soc_dai_link tegra_rt5639_dai[NUM_DAI_LINKS] = {
 		.ops = &tegra_rt5639_bt_sco_ops,
 	},
 	[DAI_LINK_VOICE_CALL] = {
+#ifdef CONFIG_MACH_YELLOWSTONE
+		.name = "VOICE CALL",
+		.stream_name = "VOICE CALL PCM",
+		.codec_name = "rt5640.0-001c",
+		.cpu_dai_name = "dit-hifi",
+		.codec_dai_name = "rt5640-aif1",
+		.ops = &tegra_rt5639_voice_call_ops,
+		.ignore_pmdown_time = 1,
+#else
 		.name = "VOICE CALL",
 		.stream_name = "VOICE CALL PCM",
 		.codec_name = "rt5639.0-001c",
@@ -1031,6 +1068,7 @@ static struct snd_soc_dai_link tegra_rt5639_dai[NUM_DAI_LINKS] = {
 		.codec_dai_name = "rt5639-aif1",
 		.ops = &tegra_rt5639_voice_call_ops,
 		.ignore_pmdown_time = 1,
+#endif
 	},
 	[DAI_LINK_BT_VOICE_CALL] = {
 		.name = "BT VOICE CALL",
@@ -1568,8 +1606,11 @@ void tegra_rt5639_driver_shutdown(struct platform_device *pdev)
 						&tegra_rt5639_hp_jack_gpio);
 
 	codec = card->rtd[DAI_LINK_HIFI].codec;
+#ifdef CONFIG_MACH_YELLOWSTONE
+	rt5640_reset(codec);
+#else
 	rt5639_reset(codec);
-
+#endif
 	if (gpio_is_valid(pdata->gpio_ldo1_en)) {
 		gpio_set_value(pdata->gpio_ldo1_en, 0);
 		gpio_free(pdata->gpio_ldo1_en);

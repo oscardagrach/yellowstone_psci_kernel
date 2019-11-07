@@ -125,7 +125,7 @@
 
 	i2c@7000c000 {
 		rt5640: rt5640@1c {
-			compatible = "realtek,rt5639";
+			compatible = "realtek,rt5640";
 			reg = <0x1c>;
 		};
 	};
@@ -143,8 +143,8 @@
 
 	sound {
 		compatible = "nvidia,tegra-audio-rt5639";
-		nvidia,codec_name = "rt5639.0-001c";
-		nvidia,codec_dai_name = "rt5639-aif1";
+		nvidia,codec_name = "rt5640.0-001c";
+		nvidia,codec_dai_name = "rt5640-aif1";
 		nvidia,ldo-gpios = <&gpio TEGRA_GPIO(R, 2) 0>;
 		nvidia,hp-det-gpios = <&gpio TEGRA_GPIO(H, 4) 0>;
 		nvidia,use_codec_jd_irq = <1>;
