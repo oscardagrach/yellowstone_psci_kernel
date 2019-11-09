@@ -163,7 +163,7 @@
 		bq28z610@55 {
 			compatible = "ti,bq28z610";
 			reg = <0x55>;
-			tz-name = "battery-temp";
+			tz-name = "battery";
 			alert-threshold = <0x0>;
 			one-percent-alerts = <0x1>;
 			valert-max = <0x13ec>;
