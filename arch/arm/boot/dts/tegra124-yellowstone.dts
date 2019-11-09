@@ -34,6 +34,9 @@
 #include "tegra124-platforms/tegra124-yellowstone-hdmi.dtsi"
 #include <dt-bindings/iio/meter/ina3221x.h>
 #include "tegra124-platforms/tegra124-yellowstone-comms.dtsi"
+#include "tegra124-platforms/tegra124-yellowstone-therm-est.dtsi"
+#include "tegra124-platforms/tegra124-yellowstone-bthrot-cdev.dtsi"
+
 
 / {
 	model = "NVIDIA Tegra124 Yellowstone";
