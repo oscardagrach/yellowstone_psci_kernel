@@ -486,11 +486,12 @@ static struct of_dev_auxdata yellowstone_auxdata_lookup[] __initdata = {
 #ifdef CONFIG_TEGRA_CEC_SUPPORT
 	OF_DEV_AUXDATA("nvidia,tegra124-cec", 0x70015000, "tegra_cec", NULL),
 #endif
-	OF_DEV_AUXDATA("nvidia,tegra-audio-rt5639", 0x0, "tegra-snd-rt5640",
+	OF_DEV_AUXDATA("nvidia,tegra-audio-rt5639", 0, "tegra-snd-rt5640",
 		NULL),
 	OF_DEV_AUXDATA("nvidia,icera-i500", 0, "tegra_usb_modem_power", NULL),
 	OF_DEV_AUXDATA("nvidia,ptm", 0x7081c000, "ptm", NULL),
 	OF_DEV_AUXDATA("nvidia,tegra30-hda", 0x70030000, "tegra30-hda", NULL),
+	OF_DEV_AUXDATA("nvidia,balanced-throttle", 0, "bthrot_cdev", NULL),
 	{}
 };
 #endif
@@ -693,8 +694,8 @@ static void __init tegra_yellowstone_late_init(void)
 	tegra_io_dpd_enable(&pexclk1_io);
 	tegra_io_dpd_enable(&pexclk2_io);
 	yellowstone_sensor_hub_init();
-	yellowstone_sensors_init();
 	yellowstone_soctherm_init();
+	yellowstone_sensors_init();
 }
 
 static void __init tegra_yellowstone_init_early(void)
