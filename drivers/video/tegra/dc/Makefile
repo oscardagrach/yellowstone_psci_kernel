@@ -34,7 +34,9 @@ obj-y += dc_sysfs.o
 obj-y += dc_config.o
 obj-y += sor.o
 obj-y += dpaux.o
+ifeq ($(CONFIG_TEGRA_DP),y)
 obj-$(CONFIG_DEBUG_FS) += dp_debug.o
+endif
 obj-$(CONFIG_TEGRA_DP) += dp.o
 obj-$(CONFIG_TEGRA_DPHDCP) += dphdcp.o
 obj-$(CONFIG_TEGRA_DP) += hpd.o
