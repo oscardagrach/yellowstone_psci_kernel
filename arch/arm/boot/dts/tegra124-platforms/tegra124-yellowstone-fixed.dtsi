@@ -210,8 +210,8 @@
 			regulator-name = "ti913-gpio2";
 			regulator-min-microvolt = <3300000>;
 			regulator-max-microvolt = <3300000>;
-			//regulator-always-on;
-			//regulator-boot-on;
+			regulator-always-on;
+			regulator-boot-on;
 			gpio = <&palmas_gpio 2 0>;
 			enable-active-high;
 
