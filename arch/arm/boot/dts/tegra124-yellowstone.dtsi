@@ -133,8 +133,8 @@
 		compatible = "nvidia,icera-i500";
 		nvidia,phy-type = <0>;
 
-		nvidia,regulator = "vdd_wwan_mdm";
-		vdd_wwan_mdm-supply = <&ti913_gpio2>;
+		//nvidia,regulator = "vdd_wwan_mdm";
+		//vdd_wwan_mdm-supply = <&ti913_gpio2>;
 		nvidia,boot-gpio = <&gpio TEGRA_GPIO(O, 5) GPIO_ACTIVE_LOW>;
 		nvidia,mdm-en-gpio = <&gpio TEGRA_GPIO(S, 4) GPIO_ACTIVE_LOW>;
 		nvidia,reset-gpio = <&gpio TEGRA_GPIO(S, 3) GPIO_ACTIVE_LOW>;
