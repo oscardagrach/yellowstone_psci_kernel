@@ -14,7 +14,7 @@
  */
 
 #include "tegra124-soc-base.dtsi"
-//#include "tegra124-platforms/tegra124-yellowstone-therm-est.dtsi"
+#include "tegra124-platforms/tegra124-yellowstone-therm-est.dtsi"
 #include "tegra124-platforms/tegra124-bthrot-cdev.dtsi"
 
 / {
