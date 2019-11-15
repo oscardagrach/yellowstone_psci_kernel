@@ -64,6 +64,7 @@
 #include <linux/pinctrl/pinconf-tegra.h>
 #include <misc/sh-ldisc.h>
 #include <linux/nfc/bcm2079x.h>
+#include <linux/ina3221.h>
 
 #include <mach/irqs.h>
 #include <mach/io_dpd.h>
@@ -642,6 +643,39 @@ static int __init yellowstone_sensor_hub_init(void)
 	return 0;
 }
 
+enum {
+    VDD_BAT_GPU_SOC,
+};
+
+static struct ina3221_platform_data power_mon_info[] = {
+    [VDD_BAT_GPU_SOC] = {
+        .rail_name = {"VDD_BAT", "VDD_SYS_GPU_IN",
+                            "VDD_SYS_SOC_IN"},
+        .shunt_resistor = {10, 10, 10},
+        .cont_conf_data = INA3221_CONT_CONFIG_DATA,
+        .trig_conf_data = INA3221_TRIG_CONFIG_DATA,
+    },
+};
+
+enum {
+    INA_I2C_ADDR_40,
+};
+
+static struct i2c_board_info pbp5_i2c1_ina3221_board_info[] = {
+    [INA_I2C_ADDR_40] = {
+        I2C_BOARD_INFO("ina3221", 0x40),
+        .platform_data = &power_mon_info[VDD_BAT_GPU_SOC],
+        .irq = -1,
+    },
+};
+
+static void __init yellowstone_pmon_init(void)
+{
+	pr_info("INA3221: registering device\n");
+    i2c_register_board_info(1, pbp5_i2c1_ina3221_board_info,
+            ARRAY_SIZE(pbp5_i2c1_ina3221_board_info));
+}
+
 static void __init tegra_yellowstone_early_init(void)
 {
 	tegra_clk_init_from_table(yellowstone_clk_init_table);
@@ -693,6 +727,7 @@ static void __init tegra_yellowstone_late_init(void)
 	tegra_io_dpd_enable(&pexbias_io);
 	tegra_io_dpd_enable(&pexclk1_io);
 	tegra_io_dpd_enable(&pexclk2_io);
+	yellowstone_pmon_init();
 	yellowstone_sensor_hub_init();
 	yellowstone_soctherm_init();
 	yellowstone_sensors_init();
