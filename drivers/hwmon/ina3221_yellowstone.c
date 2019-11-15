@@ -63,7 +63,6 @@ static bool ina3221_debug = 0;
 module_param(ina3221_debug, bool, S_IRUGO | S_IWUSR);
 MODULE_PARM_DESC(ina3221_debug, "ina3221 debug");
 
-
 struct ina3221_data {
 	struct device *hwmon_dev;
 	struct i2c_client *client;
