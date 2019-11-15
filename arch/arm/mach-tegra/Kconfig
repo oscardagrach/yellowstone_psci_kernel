@@ -172,7 +172,8 @@ config MACH_YELLOWSTONE
        select MACH_HAS_SND_SOC_TEGRA_RT5639 if SND_SOC
        select MACH_HAS_SND_SOC_TEGRA_RT5645 if SND_SOC
        select SYSEDP_FRAMEWORK
-	   select ZONE_DMA
+       select ZONE_DMA
+       select IIO_TRIGGERED_BUFFER
        help
          Support for NVIDIA YELLOWSTONE Development platform
 
