@@ -406,21 +406,21 @@
 	};
 
 	therm_est_sensor {
-		status = "disabled";
+		status = "okay";
 	};
 
 	bthrot_cdev {
 		skin_balanced {
-			status = "okay";
+			status = "disabled";
 		};
 		gpu_balanced {
-			status = "okay";
+			status = "disabled";
 		};
 		cpu_balanced {
 			status = "okay";
 		};
 		emergency_balanced {
-			status = "okay";
+			status = "disabled";
 		};
 	};
 };
