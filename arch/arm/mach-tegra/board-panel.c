@@ -373,6 +373,8 @@ static void tegra_pwm_bl_ops_reg_based_on_disp_board_id(struct device *dev)
 
 	switch (display_board.board_id) {
 	case BOARD_E1627:
+		dev_set_drvdata(dev, dsi_j_wuxga_7_ops.pwm_bl_ops);
+		break;
 	case BOARD_E1797:
 		dev_set_drvdata(dev, dsi_p_wuxga_10_1_ops.pwm_bl_ops);
 		break;
@@ -630,9 +632,12 @@ static struct device_node
 
 	switch (display_board.board_id) {
 	case BOARD_E1627:
+		np_panel = of_find_compatible_node(NULL, NULL, "j,wuxga-7");
+		if (np_panel && pdata && dc_out)
+			tegra_panel_register_ops(dc_out,
+				&dsi_j_wuxga_7_ops);
+		break;
 	case BOARD_E1797:
-		if (of_machine_is_compatible("nvidia,yellowstone"))
-			break;
 		np_panel = of_find_compatible_node(NULL, NULL, "p,wuxga-10-1");
 		if (np_panel && pdata && dc_out)
 			tegra_panel_register_ops(dc_out,
