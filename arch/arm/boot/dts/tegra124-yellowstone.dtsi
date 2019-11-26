@@ -116,10 +116,10 @@
 	bthrot_cdev {
 		compatible = "nvidia,balanced-throttle";
 		skin_balanced {
-			status = "disabled";
+			status = "okay";
 		};
 		gpu_balanced {
-			status = "disabled";
+			status = "okay";
 		};
 		cpu_balanced {
 			status = "okay";
