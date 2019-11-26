@@ -493,6 +493,8 @@ static struct of_dev_auxdata yellowstone_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("nvidia,ptm", 0x7081c000, "ptm", NULL),
 	OF_DEV_AUXDATA("nvidia,tegra30-hda", 0x70030000, "tegra30-hda", NULL),
 	OF_DEV_AUXDATA("nvidia,balanced-throttle", 0, "bthrot_cdev", NULL),
+	OF_DEV_AUXDATA("nvidia,tegra124-sysedp-dynamic-capping", 0, "sysedp_dynamic_capping",
+		NULL),
 	{}
 };
 #endif
