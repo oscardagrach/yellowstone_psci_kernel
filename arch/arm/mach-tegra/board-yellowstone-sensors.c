@@ -23,13 +23,14 @@
 
 #include <linux/pid_thermal_gov.h>
 #include <linux/tegra-fuse.h>
+#include <linux/of_platform.h>
 #include <mach/edp.h>
 #include <mach/io_dpd.h>
 #include <media/camera.h>
 
-//#include <media/ov4682.h>
-//#include <media/ov7251.h>
-//#include <media/ov9762.h>
+#include <media/ov4682.h>
+#include <media/ov7251.h>
+#include <media/ov9762.h>
 
 #include <linux/nct1008.h>
 
@@ -47,6 +48,228 @@
 #include "board-common.h"
 #include "board-yellowstone.h"
 #include "tegra-board-id.h"
+
+static struct tegra_io_dpd csia_io = {
+	.name			= "CSIA",
+	.io_dpd_reg_index	= 0,
+	.io_dpd_bit		= 0,
+};
+
+static struct tegra_io_dpd csib_io = {
+	.name			= "CSIB",
+	.io_dpd_reg_index	= 0,
+	.io_dpd_bit		= 1,
+};
+
+static struct tegra_io_dpd dsic_io = {
+	.name			= "DSIC",
+	.io_dpd_reg_index	= 1,
+	.io_dpd_bit		= 8,
+};
+
+static struct tegra_io_dpd dsid_io = {
+	.name			= "DSID",
+	.io_dpd_reg_index	= 1,
+	.io_dpd_bit		= 9,
+};
+
+static struct tegra_io_dpd csic_io = {
+	.name			= "CSIC",
+	.io_dpd_reg_index	= 1,
+	.io_dpd_bit		= 10,
+};
+
+static struct tegra_io_dpd csid_io = {
+	.name			= "CSID",
+	.io_dpd_reg_index	= 1,
+	.io_dpd_bit		= 11,
+};
+
+static struct tegra_io_dpd csie_io = {
+	.name			= "CSIE",
+	.io_dpd_reg_index	= 1,
+	.io_dpd_bit		= 12,
+};
+
+static int yellowstone_ov4682_power_on(struct ov4682_power_rail *pw, unsigned char sh_device)
+{
+	/* disable CSIA/B IOs DPD mode to turn on front camera for yellowstone */
+	tegra_io_dpd_disable(&csia_io);
+	tegra_io_dpd_disable(&csib_io);
+
+	sh_camera_power(sh_device, 1);
+
+	return 1;
+}
+
+static int yellowstone_ov4682_power_off(struct ov4682_power_rail *pw, unsigned char sh_device)
+{
+	sh_camera_power(sh_device, 0);
+
+	/* enable CSIA/B IOs DPD mode to turn off front camera for yellowstone */
+	tegra_io_dpd_enable(&csia_io);
+	tegra_io_dpd_enable(&csib_io);
+
+	return 1;
+}
+
+struct ov4682_platform_data yellowstone_ov4682_pdata = {
+	.power_on = yellowstone_ov4682_power_on,
+	.power_off = yellowstone_ov4682_power_off,
+	.sh_device = DEVICE_REAR_CAMERA,
+};
+
+static int yellowstone_ov7251_power_on(struct ov7251_power_rail *pw, unsigned char sh_device)
+{
+	/* disable DSIC IOs DPD mode to turn on front
+	 * camera for yellowstone */
+	tegra_io_dpd_disable(&dsic_io);
+
+	sh_camera_power(sh_device, 1);
+
+	return 0;
+}
+
+static int yellowstone_ov7251_power_off(struct ov7251_power_rail *pw, unsigned char sh_device)
+{
+	sh_camera_power(sh_device, 0);
+
+	/* enable DSIC IOs DPD mode to turn off front
+	 * camera for yellowstone */
+	tegra_io_dpd_enable(&dsic_io);
+
+	return 0;
+}
+
+struct ov7251_platform_data yellowstone_ov7251_pdata = {
+	.power_on = yellowstone_ov7251_power_on,
+	.power_off = yellowstone_ov7251_power_off,
+	.sh_device = DEVICE_FISHEYE_CAMERA,
+};
+
+static int yellowstone_ov9762_power_on(struct ov9762_power_rail *pw, unsigned char sh_device)
+{
+	int err;
+	if (unlikely(WARN_ON(!pw || !pw->avdd_hv
+		|| !pw->vdd_lv || !pw->dvdd))) {
+		return -EFAULT;
+	}
+
+	/* disable CSIE IOs DPD mode to turn on front camera for yellowstone */
+	tegra_io_dpd_disable(&csie_io);
+
+	gpio_set_value(FCAM_PWDN, 0); /* TEGRA_GPIO_PBB4 */
+	usleep_range(10, 20);
+
+	err = regulator_enable(pw->avdd_hv); /*AVDD*/
+	if (unlikely(err))
+		goto ov9762_avdd_fail;
+
+	err = regulator_enable(pw->vdd_lv); /*VDIG*/
+	if (unlikely(err))
+		goto ov9762_vdd_fail;
+
+	err = regulator_enable(pw->dvdd); /*DOVDD*/
+	if (unlikely(err))
+		goto ov9762_dvdd_fail;
+
+	gpio_set_value(FCAM_PWDN, 1); /* TEGRA_GPIO_PBB4 */
+
+	/* Clock to device is controlled by sensorhub, as is
+	 * timestamp streaming */
+	sh_camera_power(sh_device, 1);
+	usleep_range(300, 310);
+
+	printk("ov9762 power on done PWDN:%d!\n",gpio_get_value(FCAM_PWDN));
+	return 0;
+
+ov9762_dvdd_fail:
+ov9762_vdd_fail:
+	regulator_disable(pw->avdd_hv);
+
+ov9762_avdd_fail:
+	gpio_set_value(FCAM_PWDN, 0);
+	printk("ov9762 power on failed!\n");
+	return -ENODEV;
+}
+
+static int yellowstone_ov9762_power_off(struct ov9762_power_rail *pw, unsigned char sh_device)
+{
+	if (unlikely(WARN_ON(!pw || !pw->avdd_hv
+		|| !pw->vdd_lv || !pw->dvdd)))
+		return -EFAULT;
+
+	/* Turn off clock to device and timestamp streaming */
+	sh_camera_power(sh_device, 0);
+
+	usleep_range(100, 120);
+	gpio_set_value(FCAM_PWDN, 0); /*TEGRA_GPIO_PBB4*/
+
+	regulator_disable(pw->dvdd);
+	regulator_disable(pw->vdd_lv);
+	regulator_disable(pw->avdd_hv);
+
+	/* enable CSIE IOs DPD mode to turn off front camera for yellowstone */
+	tegra_io_dpd_enable(&csie_io);
+
+	return 0;
+}
+
+struct ov9762_platform_data yellowstone_ov9762_pdata = {
+	.power_on = yellowstone_ov9762_power_on,
+	.power_off = yellowstone_ov9762_power_off,
+	.sh_device = DEVICE_FRONT_CAMERA,
+};
+
+static struct camera_data_blob yellowstone_camera_lut[] = {
+	{"yellowstone_ov4682_pdata", &yellowstone_ov4682_pdata},
+	{"yellowstone_ov7251_pdata", &yellowstone_ov7251_pdata},
+	{"yellowstone_ov9762_pdata", &yellowstone_ov9762_pdata},
+	{},
+};
+
+void __init yellowstone_camera_auxdata(void *data)
+{
+	struct of_dev_auxdata *aux_lut = data;
+	while (aux_lut && aux_lut->compatible) {
+		if (!strcmp(aux_lut->compatible, "nvidia,tegra124-camera")) {
+			pr_info("%s: update camera lookup table.\n", __func__);
+			aux_lut->platform_data = yellowstone_camera_lut;
+		}
+		aux_lut++;
+	}
+}
+
+static int yellowstone_camera_init(void)
+{
+	pr_debug("%s: ++\n", __func__);
+
+	/**
+	 * MIPI on Yellowstone
+	 *
+	 * OV4682 - 4 lanes MIPI interface --> CSIA(2 of 4) and CSIB(2 of 4) IOs
+	 * OV7251 - 2 lanes MIPI interface --> DSIC(2 of 2) IOs
+	 * OV9762 - 1 lane  MIPI interface --> CSIE(1 of 1) IOs
+	 *
+	 * Display - 4 lanes MIPI interface --> DSIA(4 of 4) IOs
+	 *
+	 * CSIC and CSID IOs are defunct on T124
+	 */
+	/* put CSIA/B/C/D/E IOs into DPD mode to
+	 * save additional power for yellowstone
+	 */
+	tegra_io_dpd_enable(&csia_io);
+	tegra_io_dpd_enable(&csib_io);
+	tegra_io_dpd_enable(&csic_io);
+	tegra_io_dpd_enable(&csid_io);
+	tegra_io_dpd_enable(&csie_io);
+
+	/* put DSIC/D into DPD */
+	tegra_io_dpd_enable(&dsic_io);
+	tegra_io_dpd_enable(&dsid_io);
+
+	return 0;
+}
 
 static struct pid_thermal_gov_params cpu_pid_params = {
 	.max_err_temp = 4000,
@@ -193,8 +416,8 @@ static int yellowstone_nct72_init(void)
 
 int __init yellowstone_sensors_init(void)
 {
-	/* yellowstone_camera_init(); */
 	yellowstone_nct72_init();
+	yellowstone_camera_init();
 
 	return 0;
 }
