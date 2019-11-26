@@ -118,6 +118,27 @@ config VIDEO_OV7695
           This is a driver for the OV7695 YUV camera sensor device
           This sensor has external ISP, it isn't using tegra ISP.
 
+config VIDEO_OV4682
+        tristate "OV4682 camera sensor support"
+        depends on I2C && ARCH_TEGRA
+        ---help---
+          This is a driver for the OV4682 YUV camera sensor device
+          This sensor has external ISP, it isn't using tegra ISP.
+
+config VIDEO_OV7251
+        tristate "OV7251 camera sensor support"
+        depends on I2C && ARCH_TEGRA
+        ---help---
+          This is a driver for the OV7251 YUV camera sensor device
+          This sensor has external ISP, it isn't using tegra ISP.
+
+config VIDEO_OV9762
+        tristate "OV9762 camera sensor support"
+        depends on I2C && ARCH_TEGRA
+        ---help---
+          This is a driver for the OV9762 YUV camera sensor device
+          This sensor has external ISP, it isn't using tegra ISP.
+
 config VIDEO_OV10823
         tristate "OV10823 camera sensor support"
         depends on I2C && ARCH_TEGRA
