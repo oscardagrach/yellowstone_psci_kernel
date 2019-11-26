@@ -24,7 +24,7 @@
 	host1x {
 		dsi {
 			panel-j-wuxga-7 {
-				status = "okay";
+				status = "disabled";
 				compatible = "j,wuxga-7";
 				nvidia,dsi-instance = <DSI_INSTANCE_0>;
 				nvidia,dsi-n-data-lanes = <4>;
@@ -69,7 +69,7 @@
 					nvidia,out-rotation = <270>;
 				};
 				display-timings {
-					1200x1920-32 {
+					1200x1920-32-60Hz {
 						clock-frequency = <162624000>;
 						hactive = <1200>;
 						vactive = <1920>;
@@ -85,6 +85,37 @@
 				};
 				smartdimmer {
 					status = "okay";
+					nvidia,use-auto-pwm = <0>;
+					nvidia,hw-update-delay = <0>;
+					nvidia,bin-width = <0xffffffff>;
+					nvidia,aggressiveness = <5>;
+					nvidia,use-vid-luma = <0>;
+					nvidia,phase-in-settings = <0>;
+					nvidia,phase-in-adjustments = <0>;
+					nvidia,k-limit-enable = <1>;
+					nvidia,k-limit = <200>;
+					nvidia,sd-window-enable = <0>;
+					nvidia,soft-clipping-enable= <1>;
+					nvidia,soft-clipping-threshold = <128>;
+					nvidia,smooth-k-enable = <1>;
+					nvidia,smooth-k-incr = <4>;
+					nvidia,coeff = <5 9 2>;
+					nvidia,fc = <0 0>;
+					nvidia,blp = <1024 255>;
+					nvidia,bltf = <57 65 73 82
+						       92 103 114 125
+						       138 150 164 178
+						       193 208 224 241>;
+					nvidia,lut = <255 255 255
+						      199 199 199
+						      153 153 153
+						      116 116 116
+						      85 85 85
+						      59 59 59
+						      36 36 36
+						      17 17 17
+						      0 0 0>;
+					nvidia,use-vpulse2 = <1>;
 					nvidia,bl-device-name = "pwm-backlight";
 				};
 				cmu {
@@ -250,7 +281,7 @@
 
 	backlight {
 		panel-j-wuxga-7-bl {
-			status = "okay";
+			status = "disabled";
 			compatible = "j,wuxga-7-bl";
 			pwms = <&tegra_pwm 1 1000000>;
 			max-brightness = <255>;
