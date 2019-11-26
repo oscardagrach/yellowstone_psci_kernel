@@ -1,0 +1,55 @@
+#include <dt-bindings/media/camera.h>
+
+#define CAM_I2C_BUS	2
+
+/ {
+	tegra-camera-platform {
+		compatible = "nvidia, tegra-camera-platform";
+	};
+
+	camera-pcl {
+		compatible = "nvidia,tegra124-camera", "simple-bus";
+		configuration = <0xAA55AA55>;
+
+		modules {
+			module1: module1@modules {
+				compatible = "sensor,rear";
+				badge_info = "yellowstone_rear_camera";
+
+				sensor {
+					profile = <&ov4682_1>;
+					platformdata = "yellowstone_ov4682_pdata";
+				};
+			};
+		};
+
+		profiles {
+			ov4682_1: ov4682@2_0010 {
+				index = <1>;
+				chipname = "pcl_OV4682";
+				type = "sensor";
+				guid = "s_OV4682";
+				position = <0>;
+				bustype = "i2c";
+				busnum = <CAM_I2C_BUS>;
+				addr = <0x10>;
+				datalen = <2>;
+				pinmuxgrp = <0xFFFF>;
+				gpios = <0>;
+				//regulators = "vana", "vif2";
+				clocks = "mclk";
+				drivername = "ov4682";
+				detect = <0x0002 0x300A 0xFFFF 0x4682>;
+				devid = <0x4682>;
+				poweron = <
+					CAMERA_END
+					>;
+				poweroff = <
+					CAMERA_END
+					>;
+			};
+		};
+	};
+};
+
+

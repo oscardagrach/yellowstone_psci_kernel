@@ -34,6 +34,7 @@ int yellowstone_rail_alignment_init(void);
 int yellowstone_soctherm_init(void);
 int yellowstone_edp_init(void);
 int yellowstone_fixed_regulator_init(void);
+void yellowstone_camera_auxdata(void *);
 
 /* generated soc_therm OC interrupts */
 #define TEGRA_SOC_OC_IRQ_BASE	TEGRA_NR_IRQS
