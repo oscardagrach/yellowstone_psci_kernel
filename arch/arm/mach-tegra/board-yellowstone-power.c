@@ -144,18 +144,6 @@ static struct i2c_board_info __initdata bq2477x_boardinfo[] = {
 	},
 };
 
-static struct power_supply_extcon_plat_data extcon_pdata = {
-	.extcon_name = "tegra-udc",
-};
-
-static struct platform_device power_supply_extcon_device = {
-	.name	= "power-supply-extcon",
-	.id	= -1,
-	.dev	= {
-		.platform_data = &extcon_pdata,
-	},
-};
-
 /************************ ARDBEG CL-DVFS DATA *********************/
 #define E1735_CPU_VDD_MAP_SIZE		33
 #define E1735_CPU_VDD_MIN_UV		752000
@@ -348,7 +336,6 @@ int __init yellowstone_regulator_init(void)
 	struct board_info pmu_board_info;
 	tegra_get_pmu_board_info(&pmu_board_info);
 
-	platform_device_register(&power_supply_extcon_device);
 	yellowstone_charger_init();
 
 	yellowstone_cl_dvfs_init(&pmu_board_info);
