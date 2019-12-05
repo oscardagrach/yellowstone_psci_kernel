@@ -200,7 +200,6 @@ static int bq2477x_extcon_probe(struct platform_device *pdev)
 	}
 
 	psy_extcon->dev = &pdev->dev;
-	psy_extcon->parent = pdev->dev.parent;
 	dev_set_drvdata(&pdev->dev, psy_extcon);
 
 	psy_extcon->dock_usb3_gpio = pdata->dock_usb3_gpio;
