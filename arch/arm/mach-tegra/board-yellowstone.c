@@ -448,12 +448,10 @@ static void yellowstone_xusb_init(void)
 static struct of_dev_auxdata yellowstone_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("nvidia,tegra124-se", 0x70012000, "tegra12-se", NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-dtv", 0x7000c300, "dtv", NULL),
-/*
 	OF_DEV_AUXDATA("nvidia,tegra124-udc", TEGRA_USB_BASE, "tegra-udc.0",
 			NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-otg", TEGRA_USB_BASE, "tegra-otg",
 			NULL),
-*/
 	OF_DEV_AUXDATA("nvidia,tegra124-host1x", TEGRA_HOST1X_BASE, "host1x",
 		NULL),
 	OF_DEV_AUXDATA("nvidia,tegra124-gk20a", TEGRA_GK20A_BAR0_BASE,
@@ -703,14 +701,19 @@ static struct tegra_io_dpd pexclk2_io = {
 
 static void __init tegra_yellowstone_late_init(void)
 {
+	int ret = 0;
 	struct board_info board_info;
+
 	tegra_get_board_info(&board_info);
 	pr_info("board_info: id:sku:fab:major:minor = 0x%04x:0x%04x:0x%02x:0x%02x:0x%02x\n",
 		board_info.board_id, board_info.sku,
 		board_info.fab, board_info.major_revision,
 		board_info.minor_revision);
 	//tegra_disp_defer_vcore_override();
-	yellowstone_usb_init();
+
+	/* temporary workaround while I transition USB/XUSB to device tree */
+	if (ret)
+		yellowstone_usb_init();
 
 #ifdef CONFIG_TEGRA_XUSB_PLATFORM
 	yellowstone_xusb_init();
