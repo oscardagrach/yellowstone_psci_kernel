@@ -709,7 +709,7 @@ static void __init tegra_yellowstone_late_init(void)
 		board_info.board_id, board_info.sku,
 		board_info.fab, board_info.major_revision,
 		board_info.minor_revision);
-	//tegra_disp_defer_vcore_override();
+	tegra_disp_defer_vcore_override();
 
 	/* temporary workaround while I transition USB/XUSB to device tree */
 	if (ret)
