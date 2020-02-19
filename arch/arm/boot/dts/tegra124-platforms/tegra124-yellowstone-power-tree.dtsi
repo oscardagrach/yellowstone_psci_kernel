@@ -67,7 +67,7 @@
 		pwrdet-pex-ctl-supply = <&palmas_ti913_regen1>;
 		pwrdet-cam-supply = <&palmas_smps6>;
 	};
-/*
+
 	udc@7d000000 {
 		avdd_usb-supply = <&palmas_ti913_regen1>;
 		avdd_pll_utmip-supply = <&palmas_smps6>;
@@ -76,5 +76,5 @@
 	otg@7d000000 {
 		usb_vbus-supply = <&usb0_vbus>;
 	};
-*/
+
 };
