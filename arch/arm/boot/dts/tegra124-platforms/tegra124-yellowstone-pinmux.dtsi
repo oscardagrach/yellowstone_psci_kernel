@@ -1071,9 +1071,9 @@
 
 			kb_row6_pr6 {
 				nvidia,pins = "kb_row6_pr6";
-				nvidia,function = "kbc";
+				nvidia,function = "displaya_alt";
 				nvidia,enable-input = <TEGRA_PIN_ENABLE>;
-				nvidia,pull = <TEGRA_PIN_PULL_DOWN>;
+				nvidia,pull = <TEGRA_PIN_PULL_NONE>;
 				nvidia,tristate = <TEGRA_PIN_DISABLE>;
 			};
 
