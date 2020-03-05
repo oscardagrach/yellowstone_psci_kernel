@@ -36,7 +36,7 @@
 		compatible = "nvidia,tegra20-uart", "nvidia,tegra114-hsuart";
 		console-port;
 		sqa-automation-port;
-		status = "okay";
+		status = "disabled";
 	};
 
 	i2c@7000d000 {
