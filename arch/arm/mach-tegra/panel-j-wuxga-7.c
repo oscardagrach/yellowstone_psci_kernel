@@ -33,8 +33,6 @@
 #include "iomap.h"
 #include "tegra11_host1x_devices.h"
 
-#define DSI_PANEL_RESET		1
-
 #define DSI_PANEL_BL_PWM TEGRA_GPIO_PH1
 #define GPIO_PANEL_RST   TEGRA_GPIO_PH3
 
@@ -44,8 +42,6 @@ static bool gpio_requested;
 static struct regulator *avdd_lcd_5v5;
 static struct regulator *vdd_lcd_bl_en;
 static struct regulator *dvdd_lcd_1v8;
-
-static u16 en_panel_rst;
 
 static int dsi_j_wuxga_7_regulator_get(struct device *dev)
 {
@@ -134,13 +130,6 @@ static int dsi_j_wuxga_7_enable(struct device *dev)
 		}
 	}
 
-	if (gpio_is_valid(panel_of.panel_gpio[TEGRA_GPIO_RESET]))
-		en_panel_rst = panel_of.panel_gpio[TEGRA_GPIO_RESET];
-	else {
-		pr_err("display reset gpio invalid\n");
-		goto fail;
-	}
-
 	/* IOVCC/IOVDD */
 	if (dvdd_lcd_1v8) {
 		err = regulator_enable(dvdd_lcd_1v8);
@@ -169,7 +158,7 @@ static int dsi_j_wuxga_7_enable(struct device *dev)
 		}
 	}
 	msleep(5);
-#if DSI_PANEL_RESET
+
 	if (!tegra_dc_initialized(dev)) {
 		// RESET L->H
 		gpio_direction_output(GPIO_PANEL_RST, 0);
@@ -179,7 +168,7 @@ static int dsi_j_wuxga_7_enable(struct device *dev)
 		gpio_set_value(GPIO_PANEL_RST, 1);
 		msleep(20);
 	}
-#endif
+
 	return 0;
 
 fail:
@@ -200,15 +189,15 @@ static int dsi_j_wuxga_7_disable(struct device *dev)
 	WARN(err, "%s:%d: LCM regulator disable avdd_lcd_5v5 fail", __func__, __LINE__);
 	msleep(15);
 
-#if DSI_PANEL_RESET
-	// RESET H->L
-	gpio_direction_output(GPIO_PANEL_RST, 1);
-	usleep_range(1000, 5000);
-	gpio_set_value(GPIO_PANEL_RST, 1);
-	msleep(10);
-	gpio_set_value(GPIO_PANEL_RST, 0);
-	msleep(10);
-#endif
+	if (!tegra_dc_initialized(dev)) {
+		// RESET H->L
+		gpio_direction_output(GPIO_PANEL_RST, 1);
+		usleep_range(1000, 5000);
+		gpio_set_value(GPIO_PANEL_RST, 1);
+		msleep(10);
+		gpio_set_value(GPIO_PANEL_RST, 0);
+		msleep(10);
+	}
 
 	err = 0;
 	if (dvdd_lcd_1v8)
