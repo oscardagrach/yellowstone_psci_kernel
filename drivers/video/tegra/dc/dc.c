@@ -2818,11 +2818,7 @@ static int tegra_dc_set_out(struct tegra_dc *dc, struct tegra_dc_out *out)
 		dc->initialized = false;
 	} else if (dc->out->type == TEGRA_DC_OUT_DSI &&
 			tegra_is_bl_display_initialized(dc->ndev->id)) {
-#ifdef CONFIG_MACH_YELLOWSTONE
-		dc->initialized = false;
-#else
 		dc->initialized = true;
-#endif
 	}
 #endif
 	mode = tegra_dc_get_override_mode(dc);
