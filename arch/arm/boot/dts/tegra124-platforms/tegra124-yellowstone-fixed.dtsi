@@ -115,6 +115,7 @@
 			regulator-name = "lcd_bl_en";
 			regulator-min-microvolt = <5000000>;
 			regulator-max-microvolt = <5000000>;
+			regulator-boot-on;
 			gpio = <&gpio TEGRA_GPIO(H, 2) 0>;
 			enable-active-high;
 
@@ -228,6 +229,7 @@
 			regulator-name = "ti913_gpio3";
 			regulator-min-microvolt = <3300000>;
 			regulator-max-microvolt = <3300000>;
+			regulator-boot-on;
 			gpio = <&palmas_gpio 3 0>;
 			enable-active-high;
 
@@ -244,6 +246,7 @@
 			regulator-name = "ti913-gpio6";
 			regulator-min-microvolt = <1200000>;
 			regulator-max-microvolt = <1200000>;
+			regulator-boot-on;
 			gpio = <&palmas_gpio 6 0>;
 			enable-active-high;
 
