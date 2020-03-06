@@ -65,6 +65,7 @@
 #include <misc/sh-ldisc.h>
 #include <linux/nfc/bcm2079x.h>
 #include <linux/ina3221.h>
+#include <linux/platform/tegra/dvfs.h>
 
 #include <mach/irqs.h>
 #include <mach/io_dpd.h>
@@ -699,6 +700,35 @@ static struct tegra_io_dpd pexclk2_io = {
 	.io_dpd_bit		= 6,
 };
 
+static int yellowstone_vcore_override(void)
+{
+	struct clk *disp1_clk = clk_get_sys("tegradc.0", NULL);
+	struct clk *disp2_clk = clk_get_sys("tegradc.1", NULL);
+	long disp1_rate = 162624000;
+	long disp2_rate = 297000000;
+
+	if (WARN_ON(IS_ERR(disp1_clk))) {
+		if (disp2_clk && !IS_ERR(disp2_clk))
+			clk_put(disp2_clk);
+		return PTR_ERR(disp1_clk);
+	}
+
+	if (WARN_ON(IS_ERR(disp2_clk))) {
+		clk_put(disp1_clk);
+		return PTR_ERR(disp1_clk);
+	}
+
+	printk(KERN_DEBUG "disp1 pclk=%ld\n", disp1_rate);
+	tegra_dvfs_resolve_override(disp1_clk, disp1_rate);
+	printk(KERN_DEBUG "disp2 pclk=%ld\n", disp2_rate);
+	tegra_dvfs_resolve_override(disp2_clk, disp2_rate);
+
+	clk_put(disp1_clk);
+	clk_put(disp2_clk);
+
+	return 0;
+}
+
 static void __init tegra_yellowstone_late_init(void)
 {
 	int ret = 0;
@@ -709,7 +739,8 @@ static void __init tegra_yellowstone_late_init(void)
 		board_info.board_id, board_info.sku,
 		board_info.fab, board_info.major_revision,
 		board_info.minor_revision);
-	tegra_disp_defer_vcore_override();
+
+	yellowstone_vcore_override();
 
 	/* temporary workaround while I transition USB/XUSB to device tree */
 	if (ret)
@@ -724,6 +755,7 @@ static void __init tegra_yellowstone_late_init(void)
 	yellowstone_sdhci_init();
 	yellowstone_regulator_init();
 	yellowstone_suspend_init();
+	yellowstone_emc_init();
 	isomgr_init();
 	yellowstone_touch_init();
 #ifndef CONFIG_USE_OF

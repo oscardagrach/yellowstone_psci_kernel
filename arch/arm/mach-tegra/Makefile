@@ -129,6 +129,7 @@ endif
 obj-${CONFIG_MACH_YELLOWSTONE}          += board-yellowstone.o
 obj-${CONFIG_MACH_YELLOWSTONE}          += board-yellowstone-sdhci.o
 obj-${CONFIG_MACH_YELLOWSTONE}          += board-yellowstone-sensors.o
+obj-${CONFIG_MACH_YELLOWSTONE}          += board-yellowstone-memory.o
 obj-${CONFIG_MACH_YELLOWSTONE}          += board-yellowstone-power.o
 obj-${CONFIG_MACH_YELLOWSTONE}          += panel-j-wuxga-7.o
 
