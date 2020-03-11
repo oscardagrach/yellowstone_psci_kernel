@@ -186,6 +186,21 @@
 		};
 	};
 
+	i2c@7000c500 {
+		status = "okay";
+		clock-frequency = <400000>;
+	};
+
+	i2c@7000c700 {
+		status = "okay";
+		clock-frequency = <100000>;
+	};
+
+	i2c@7000d100 {
+		status = "okay";
+		clock-frequency = <400000>;
+	};
+
 	udc@7d000000 {
 		nvidia,port-otg;
 		nvidia,charging-supported;

@@ -40,6 +40,7 @@
 	};
 
 	i2c@7000d000 {
+		clock-frequency = <400000>;
 		nvidia,bit-banging-xfer-after-shutdown;
 
 		tps65913 {
@@ -51,12 +52,12 @@
 
 	spi@7000d400 {
 		status = "okay";
-		spi-max-frequency = <25000000>;
+		spi-max-frequency = <12000000>;
 	};
 
 	spi@7000d800 {
 		status = "okay";
-		spi-max-frequency = <25000000>;
+		spi-max-frequency = <1000000>;
 	};
 
 	spi@7000da00 {
@@ -67,7 +68,7 @@
 	pmc@7000e400 {
 		status = "okay";
 		nvidia,invert-interrupt;
-		nvidia,cpu-suspend-freq = <1044000>;
+		nvidia,cpu-suspend-freq = <1092000>;
 	};
 
 	xusb@70090000 {
